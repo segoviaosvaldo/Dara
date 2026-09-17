@@ -479,6 +479,7 @@
       <input type="password" id="pinNewInput" inputmode="numeric" placeholder="4 a 6 números">
       <button class="btn-secondary" id="btnGuardarPin">Guardar PIN</button>
       <p class="sync-status" id="pinStatus"></p>
+      <button class="btn-secondary" id="btnCerrarSesion" style="display:none; margin-top:14px;">Cerrar sesión</button>
     </div>
 
     <div class="cfg-section">
@@ -498,8 +499,9 @@
 (function(){
   var STORE_KEY = 'dara_cuentas_v1';
   var SCRIPT_URL_KEY = 'dara_script_url';
-  var SCRIPT_URL = '';
-  try { SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || ''; } catch(e){}
+  var DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwb-w2OJk7bO7kuQV1qtTJy-K0EuR0OBPWuvFzfZ04V43Z9UoH2tQswIxsi4pRztyKt4Q/exec';
+  var SCRIPT_URL = DEFAULT_SCRIPT_URL;
+  try { SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || DEFAULT_SCRIPT_URL; } catch(e){}
   var state = { movimientos: [], clientas: [], precios: [] };
   var syncTimer = null;
 
@@ -550,7 +552,10 @@
           tipoCambio: p.tc, margen: p.margen, costoGs: p.costoGs, precioVenta: p.precioVenta
         };
       }),
-      config: [ { clave: 'waTemplate', valor: WA_TEMPLATE } ]
+      config: [
+        { clave: 'waTemplate', valor: WA_TEMPLATE },
+        { clave: 'pinHash', valor: getStoredPinHash() }
+      ]
     };
   }
 
@@ -602,6 +607,9 @@
         if (row.clave === 'waTemplate' && row.valor) {
           WA_TEMPLATE = row.valor;
           try { localStorage.setItem(WA_TEMPLATE_KEY, WA_TEMPLATE); } catch(e){}
+        }
+        if (row.clave === 'pinHash' && row.valor) {
+          try { localStorage.setItem(PIN_HASH_KEY, row.valor); } catch(e){}
         }
       });
       try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){}
@@ -1027,11 +1035,20 @@
   /* ---------- PIN ---------- */
   var PIN_HASH_KEY = 'dara_pin_hash';
   var SESSION_KEY = 'dara_session_ok';
+  var lockMode = 'login'; // 'login' | 'setup'
 
   async function sha256Hex(str){
     var enc = new TextEncoder().encode(str);
     var buf = await crypto.subtle.digest('SHA-256', enc);
     return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+  }
+
+  function getStoredPinHash(){
+    try { return localStorage.getItem(PIN_HASH_KEY) || ''; } catch(e){ return ''; }
+  }
+  function setStoredPinHash(hash){
+    try { localStorage.setItem(PIN_HASH_KEY, hash); } catch(e){}
+    scheduleSync();
   }
 
   function showApp(){
@@ -1040,23 +1057,22 @@
   }
 
   function refreshPinSectionUI(){
-    var hasPin = false;
-    try { hasPin = !!localStorage.getItem(PIN_HASH_KEY); } catch(e){}
+    var hasPin = !!getStoredPinHash();
     document.getElementById('pinCurrentLabel').style.display = hasPin ? 'block' : 'none';
     document.getElementById('pinCurrentInput').style.display = hasPin ? 'block' : 'none';
     document.getElementById('pinCurrentInput').value = '';
     document.getElementById('pinNewInput').value = '';
     document.getElementById('pinNote').textContent = hasPin
-      ? 'Ya tenés un PIN configurado en este teléfono. Para cambiarlo, ingresá el actual y el nuevo.'
-      : 'Todavía no configuraste un PIN en este teléfono.';
+      ? 'Ya tenés un PIN configurado (vale para todos los dispositivos conectados a la misma planilla). Para cambiarlo, ingresá el actual y el nuevo.'
+      : 'Todavía no configuraste un PIN.';
     document.getElementById('pinStatus').textContent = '';
+    document.getElementById('btnCerrarSesion').style.display = hasPin ? 'block' : 'none';
   }
 
   document.getElementById('btnGuardarPin').addEventListener('click', async function(){
     var statusEl = document.getElementById('pinStatus');
-    var hasPin = false;
-    var storedHash = '';
-    try { storedHash = localStorage.getItem(PIN_HASH_KEY) || ''; hasPin = !!storedHash; } catch(e){}
+    var storedHash = getStoredPinHash();
+    var hasPin = !!storedHash;
     var newPin = document.getElementById('pinNewInput').value.trim();
     if (!/^[0-9]{4,6}$/.test(newPin)) { statusEl.textContent = 'el PIN debe tener de 4 a 6 números'; return; }
     if (hasPin) {
@@ -1065,63 +1081,79 @@
       if (currentHash !== storedHash) { statusEl.textContent = 'el PIN actual no coincide'; return; }
     }
     var newHash = await sha256Hex(newPin);
-    try { localStorage.setItem(PIN_HASH_KEY, newHash); } catch(e){}
-    statusEl.textContent = 'PIN guardado ✓';
+    setStoredPinHash(newHash);
+    statusEl.textContent = 'PIN guardado ✓ (se está subiendo a tu planilla)';
     refreshPinSectionUI();
   });
 
-  function initLock(){
+  document.getElementById('btnCerrarSesion').addEventListener('click', function(){
+    try { localStorage.removeItem(SESSION_KEY); } catch(e){}
+    dialog.close();
+    presentLock('login');
+  });
+
+  function presentLock(mode){
+    lockMode = mode;
     var lockMsg = document.getElementById('lockMsg');
     var lockConfirm = document.getElementById('lockPinConfirm');
     var lockError = document.getElementById('lockError');
     var lockInput = document.getElementById('lockPinInput');
-    var lockSubmit = document.getElementById('lockSubmit');
-    var storedHash = '';
-    try { storedHash = localStorage.getItem(PIN_HASH_KEY) || ''; } catch(e){}
-    var sessionOk = false;
-    try { sessionOk = localStorage.getItem(SESSION_KEY) === '1'; } catch(e){}
+    lockError.textContent = '';
+    lockInput.value = '';
+    lockConfirm.value = '';
+    lockMsg.textContent = mode === 'setup' ? 'Creá un PIN para proteger la app.' : 'Ingresá tu PIN para entrar.';
+    lockConfirm.style.display = mode === 'setup' ? 'block' : 'none';
+    document.getElementById('appRoot').style.display = 'none';
+    document.getElementById('lockScreen').style.display = 'flex';
+  }
 
-    if (storedHash && sessionOk) { showApp(); return; }
-
-    var settingUp = !storedHash;
-    lockMsg.textContent = settingUp
-      ? 'Creá un PIN para proteger la app.'
-      : 'Ingresá tu PIN para entrar.';
-    lockConfirm.style.display = settingUp ? 'block' : 'none';
-
-    lockSubmit.addEventListener('click', async function(){
-      lockError.textContent = '';
-      var pin = lockInput.value.trim();
-      if (settingUp) {
-        var confirmPin = lockConfirm.value.trim();
-        if (!/^[0-9]{4,6}$/.test(pin)) { lockError.textContent = 'el PIN debe tener de 4 a 6 números'; return; }
-        if (pin !== confirmPin) { lockError.textContent = 'los dos PIN no coinciden'; return; }
-        var newHash = await sha256Hex(pin);
-        try {
-          localStorage.setItem(PIN_HASH_KEY, newHash);
-          localStorage.setItem(SESSION_KEY, '1');
-        } catch(e){}
+  document.getElementById('lockSubmit').addEventListener('click', async function(){
+    var lockError = document.getElementById('lockError');
+    var lockInput = document.getElementById('lockPinInput');
+    var lockConfirm = document.getElementById('lockPinConfirm');
+    lockError.textContent = '';
+    var pin = lockInput.value.trim();
+    if (lockMode === 'setup') {
+      var confirmPin = lockConfirm.value.trim();
+      if (!/^[0-9]{4,6}$/.test(pin)) { lockError.textContent = 'el PIN debe tener de 4 a 6 números'; return; }
+      if (pin !== confirmPin) { lockError.textContent = 'los dos PIN no coinciden'; return; }
+      var newHash = await sha256Hex(pin);
+      setStoredPinHash(newHash);
+      try { localStorage.setItem(SESSION_KEY, '1'); } catch(e){}
+      showApp();
+    } else {
+      var storedHash = getStoredPinHash();
+      var tryHash = await sha256Hex(pin);
+      if (tryHash === storedHash) {
+        try { localStorage.setItem(SESSION_KEY, '1'); } catch(e){}
         showApp();
       } else {
-        var tryHash = await sha256Hex(pin);
-        if (tryHash === storedHash) {
-          try { localStorage.setItem(SESSION_KEY, '1'); } catch(e){}
-          showApp();
-        } else {
-          lockError.textContent = 'PIN incorrecto';
-          lockInput.value = '';
-        }
+        lockError.textContent = 'PIN incorrecto';
+        lockInput.value = '';
       }
-    });
-    lockInput.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !settingUp) lockSubmit.click(); });
+    }
+  });
+  document.getElementById('lockPinInput').addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && lockMode === 'login') document.getElementById('lockSubmit').click();
+  });
+
+  async function initLock(){
+    var storedHash = getStoredPinHash();
+    var sessionOk = false;
+    try { sessionOk = localStorage.getItem(SESSION_KEY) === '1'; } catch(e){}
+    if (storedHash && sessionOk) { showApp(); return; }
+    presentLock(storedHash ? 'login' : 'setup');
   }
 
   /* ---------- Init ---------- */
-  load();
-  renderSaldo();
-  renderCalcHistory();
-  renderClientList();
-  initLock();
+  (async function boot(){
+    load();
+    if (SCRIPT_URL) { await syncLoad(); }
+    renderSaldo();
+    renderCalcHistory();
+    renderClientList();
+    initLock();
+  })();
 })();
 </script>
 </body>
