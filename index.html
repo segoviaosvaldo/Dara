@@ -98,7 +98,20 @@
     color: var(--ink-soft);
     margin: 6px 0 0;
   }
-  header.top .headnote { text-align: right; }
+  header.top .headnote { text-align: right; display: flex; align-items: center; gap: 2px; }
+  .sync-dot-btn { background: none; border: none; padding: 8px 4px; cursor: pointer; display: flex; align-items: center; }
+  .sync-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ink-soft); opacity: 0.5; transition: background .25s ease, opacity .25s ease;
+  }
+  .sync-dot.idle { background: var(--ink-soft); opacity: 0.4; }
+  .sync-dot.ok { background: var(--sage); opacity: 1; }
+  .sync-dot.error { background: var(--clay); opacity: 1; }
+  .sync-dot.syncing { background: var(--rose); opacity: 1; animation: syncPulse 1.1s ease-in-out infinite; }
+  @keyframes syncPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.55); opacity: 0.45; }
+  }
 
   main { padding: 20px 0 40px; }
   .view { display: none; }
@@ -325,6 +338,7 @@
       <div class="sub-boutique">Boutique</div>
     </div>
     <div class="headnote">
+      <button class="sync-dot-btn" id="syncDotBtn" title="Sin conectar todavía" aria-label="Estado de sincronización"><span class="sync-dot idle" id="syncDot"></span></button>
       <button class="settings-link" id="openBackup" title="Configuración" aria-label="Configuración">⚙</button>
     </div>
   </div>
@@ -469,7 +483,7 @@
 
     <div class="cfg-section">
       <div class="cfg-subhead">1) Conexión con Google Sheet</div>
-      <p class="note">Pegá acá el link de tu Google Apps Script (el que termina en /exec). Una vez guardado, cada cambio que hagas en la app se sube solo a tu planilla, y podés traer los datos de vuelta si cambiás de celular.</p>
+      <p class="note">Tu planilla es la única fuente de datos: la app trae todo de ahí al abrir, y guarda ahí mismo cada cambio, al toque — ya no queda nada guardado en el teléfono.</p>
       <label for="scriptUrlInput">Link de Google Apps Script</label>
       <input type="text" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec" spellcheck="false">
       <div class="cfg-btn-row">
@@ -500,8 +514,8 @@
     </div>
 
     <div class="cfg-section">
-      <div class="cfg-subhead">4) Respaldo manual (sin Google Sheet)</div>
-      <p class="note">Si todavía no configuraste la planilla, copiá este texto de vez en cuando y guardalo en Notas, por si cambiás de celular o borrás el navegador.</p>
+      <div class="cfg-subhead">4) Respaldo manual (por las dudas)</div>
+      <p class="note">Ahora todo se guarda directo en tu planilla, así que esto ya no hace falta para el día a día. Sirve solo como copia extra, o para restaurar datos a mano si alguna vez hace falta.</p>
       <label for="backupOut">Tu respaldo actual</label>
       <textarea id="backupOut" readonly></textarea>
       <button class="btn-secondary" id="copyBackup">Copiar respaldo</button>
@@ -514,40 +528,34 @@
 
 <script>
 (function(){
-  var STORE_KEY = 'dara_cuentas_v1';
   var SCRIPT_URL_KEY = 'dara_script_url';
   var DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwb-w2OJk7bO7kuQV1qtTJy-K0EuR0OBPWuvFzfZ04V43Z9UoH2tQswIxsi4pRztyKt4Q/exec';
   var SCRIPT_URL = DEFAULT_SCRIPT_URL;
   try { SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || DEFAULT_SCRIPT_URL; } catch(e){}
   var state = { movimientos: [], clientas: [], precios: [] };
-  var syncTimer = null;
+  var pendingSave = false;
 
-  function load(){
-    try {
-      var raw = localStorage.getItem(STORE_KEY);
-      if (raw) {
-        var parsed = JSON.parse(raw);
-        state.movimientos = parsed.movimientos || [];
-        state.clientas = parsed.clientas || [];
-        state.precios = parsed.precios || [];
-      }
-    } catch(e) { console.warn('No se pudo leer el respaldo local', e); }
-  }
   function save(){
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
-    catch(e) { console.warn('No se pudo guardar', e); }
-    scheduleSync();
-  }
-
-  function scheduleSync(){
-    if (!SCRIPT_URL) return;
-    if (syncTimer) clearTimeout(syncTimer);
-    syncTimer = setTimeout(syncSave, 1200);
+    syncSave();
   }
 
   function setSyncStatus(msg){
     var el = document.getElementById('syncStatus');
     if (el) el.textContent = msg;
+  }
+
+  function setSyncIndicator(kind){
+    var dot = document.getElementById('syncDot');
+    var btn = document.getElementById('syncDotBtn');
+    if (!dot) return;
+    dot.className = 'sync-dot ' + kind;
+    var titles = {
+      syncing: 'Sincronizando con tu planilla…',
+      ok: 'Todo guardado en tu planilla',
+      error: 'No se pudo sincronizar — tocá para reintentar',
+      idle: 'Sin conectar todavía'
+    };
+    btn.title = titles[kind] || '';
   }
 
   function flattenForSync(){
@@ -577,8 +585,10 @@
   }
 
   async function syncSave(){
-    if (!SCRIPT_URL) return;
-    setSyncStatus('subiendo…');
+    if (!SCRIPT_URL) { setSyncIndicator('idle'); setSyncStatus('pegá el link de tu Apps Script arriba'); return; }
+    pendingSave = true;
+    setSyncIndicator('syncing');
+    setSyncStatus('guardando en tu planilla…');
     try {
       var res = await fetch(SCRIPT_URL, {
         method: 'POST',
@@ -586,16 +596,21 @@
         body: JSON.stringify({ action: 'save', data: flattenForSync() })
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      setSyncStatus('sincronizado ✓ (' + new Date().toLocaleTimeString('es-PY') + ')');
+      pendingSave = false;
+      setSyncIndicator('ok');
+      setSyncStatus('guardado ✓ (' + new Date().toLocaleTimeString('es-PY') + ')');
     } catch(err) {
       console.error(err);
-      setSyncStatus('no se pudo subir, se guardó solo en este teléfono');
+      pendingSave = false;
+      setSyncIndicator('error');
+      setSyncStatus('no se pudo guardar — revisá tu conexión y tocá "Subir cambios ahora"');
     }
   }
 
   async function syncLoad(){
-    if (!SCRIPT_URL) { setSyncStatus('pegá el link del Apps Script y tocá "Guardar y traer datos"'); return; }
-    setSyncStatus('cargando…');
+    if (!SCRIPT_URL) { setSyncIndicator('idle'); setSyncStatus('pegá el link del Apps Script y tocá "Guardar y traer datos"'); return; }
+    setSyncIndicator('syncing');
+    setSyncStatus('trayendo datos de tu planilla…');
     try {
       var res = await fetch(SCRIPT_URL, { method: 'GET' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -629,11 +644,12 @@
           try { localStorage.setItem(PIN_HASH_KEY, row.valor); } catch(e){}
         }
       });
-      try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){}
       renderSaldo(); renderCalcHistory(); renderClientList();
+      setSyncIndicator('ok');
       setSyncStatus(state.movimientos.length + ' movimientos, ' + state.clientas.length + ' clientas traídas ✓');
     } catch(err) {
       console.error(err);
+      setSyncIndicator('error');
       setSyncStatus('no se pudo cargar (revisá el link y que el Apps Script esté publicado como "Cualquiera")');
     }
   }
@@ -1049,8 +1065,11 @@
     document.getElementById('scriptUrlInput').value = SCRIPT_URL;
     document.getElementById('waTemplateInput').value = WA_TEMPLATE;
     refreshPinSectionUI();
-    setSyncStatus(SCRIPT_URL ? '' : 'sin conectar — los datos solo están en este teléfono');
+    setSyncStatus(SCRIPT_URL ? '' : 'pegá el link de tu Google Apps Script para empezar');
     dialog.showModal();
+  });
+  document.getElementById('syncDotBtn').addEventListener('click', function(){
+    document.getElementById('openBackup').click();
   });
   document.getElementById('btnGuardarPlantilla').addEventListener('click', function(){
     var val = document.getElementById('waTemplateInput').value.trim();
@@ -1215,21 +1234,17 @@
 
   /* ---------- Init ---------- */
   (async function boot(){
-    load();
-    var isEmptyLocally = state.movimientos.length === 0 && state.clientas.length === 0 && state.precios.length === 0;
-    if (SCRIPT_URL && isEmptyLocally) { await syncLoad(); }
+    if (SCRIPT_URL) { await syncLoad(); } else { setSyncIndicator('idle'); }
     renderSaldo();
     renderCalcHistory();
     renderClientList();
     initLock();
   })();
 
-  /* Si la app se va a segundo plano con una subida pendiente, la mandamos ya
-     (con sendBeacon, que sigue funcionando aunque se cierre la pestaña). */
+  /* Si la app se va a segundo plano con un guardado en curso, lo reforzamos
+     con sendBeacon, que sigue funcionando aunque se cierre la pestaña. */
   document.addEventListener('visibilitychange', function(){
-    if (document.hidden && syncTimer && SCRIPT_URL) {
-      clearTimeout(syncTimer);
-      syncTimer = null;
+    if (document.hidden && pendingSave && SCRIPT_URL) {
       try {
         var blob = new Blob([JSON.stringify({ action: 'save', data: flattenForSync() })], { type: 'text/plain;charset=utf-8' });
         navigator.sendBeacon(SCRIPT_URL, blob);
