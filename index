@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DARA · Cuentas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAF6F2;
+    --bg-elevated: #FFFFFF;
+    --ink: #2B2420;
+    --ink-soft: #8A7D74;
+    --rose: #DCA0AF;
+    --rose-deep: #B4738A;
+    --rose-wash: #F3E2E6;
+    --sage: #7C8F72;
+    --sage-wash: #E9EDE5;
+    --clay: #B8674A;
+    --clay-wash: #F3E1DA;
+    --line: #E7DDD4;
+    --font-serif: 'Fraunces', Georgia, serif;
+    --font-sans: 'Inter', -apple-system, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #201B17;
+      --bg-elevated: #2A2420;
+      --ink: #F2ECE6;
+      --ink-soft: #A79A90;
+      --rose: #E3A6B7;
+      --rose-deep: #D98CA0;
+      --rose-wash: #3A2A2E;
+      --sage: #9DB092;
+      --sage-wash: #28312A;
+      --clay: #D98A6C;
+      --clay-wash: #3A2C24;
+      --line: #3A322C;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #201B17;
+    --bg-elevated: #2A2420;
+    --ink: #F2ECE6;
+    --ink-soft: #A79A90;
+    --rose: #E3A6B7;
+    --rose-deep: #D98CA0;
+    --rose-wash: #3A2A2E;
+    --sage: #9DB092;
+    --sage-wash: #28312A;
+    --clay: #D98A6C;
+    --clay-wash: #3A2C24;
+    --line: #3A322C;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 84px;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 0 20px; }
+
+  header.top {
+    padding: 28px 20px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  header.top .wrap { padding: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  header.top .wordmark {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 32px;
+    letter-spacing: 1.5px;
+    color: var(--rose-deep);
+    line-height: 1;
+  }
+  header.top .sub-boutique {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 11px;
+    letter-spacing: 5px;
+    color: var(--ink-soft);
+    margin-top: 5px;
+    padding-left: 2px;
+  }
+  header.top .tag {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin: 6px 0 0;
+  }
+  header.top .headnote { text-align: right; }
+
+  main { padding: 20px 0 40px; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  section.card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .balance-figure { text-align: left; padding: 4px 2px 14px; }
+  .balance-figure .who { font-size: 13px; color: var(--ink-soft); margin-bottom: 6px; }
+  .balance-figure .amount {
+    font-family: var(--font-serif);
+    font-size: 40px;
+    font-variant-numeric: tabular-nums;
+  }
+  .amount.clay { color: var(--clay); }
+  .amount.sage { color: var(--sage); }
+  .amount.neutral { color: var(--ink-soft); }
+
+  h2.section-title {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: 20px;
+    margin: 6px 0 14px;
+  }
+
+  label { display:block; font-size: 12px; color: var(--ink-soft); margin: 12px 0 5px; }
+  label:first-child { margin-top: 0; }
+  input[type=text], input[type=number], input[type=date], input[type=password], input[type=tel], textarea {
+    width: 100%;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  textarea { font-variant-numeric: normal; min-height: 90px; resize: vertical; }
+  a.rate-link { display: inline-block; margin-top: 7px; font-size: 12.5px; color: var(--rose-deep); text-decoration: none; }
+  .phone-row { display: flex; gap: 8px; margin-top: 5px; }
+  .phone-row input { flex: 1; }
+  a.wa-btn {
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    padding: 0 16px; border-radius: 10px; background: var(--sage); color: #fff;
+    font-size: 13.5px; font-weight: 600; text-decoration: none; opacity: 0.4;
+    pointer-events: none; white-space: nowrap;
+  }
+  a.wa-btn.enabled { opacity: 1; pointer-events: auto; }
+  input:focus, textarea:focus, button:focus-visible {
+    outline: 2px solid var(--rose);
+    outline-offset: 1px;
+  }
+
+  .segmented { display: flex; gap: 8px; margin-top: 12px; }
+  .segmented button {
+    flex: 1;
+    padding: 11px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 13px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    line-height: 1.3;
+  }
+  .segmented button.selected.plus { background: var(--clay-wash); border-color: var(--clay); color: var(--clay); }
+  .segmented button.selected.minus { background: var(--sage-wash); border-color: var(--sage); color: var(--sage); }
+
+  .btn-primary {
+    width: 100%;
+    margin-top: 16px;
+    padding: 13px;
+    border-radius: 10px;
+    border: none;
+    background: var(--rose-deep);
+    color: #fff;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .btn-primary:active { opacity: 0.85; }
+  .btn-secondary {
+    width: 100%;
+    margin-top: 10px;
+    padding: 11px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  ul.ledger { list-style: none; margin: 0; padding: 0; }
+  ul.ledger li {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+  }
+  ul.ledger li:first-child { border-top: none; }
+  .entry-left { min-width: 0; }
+  .entry-desc { font-size: 14.5px; }
+  .entry-meta { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .pay-btn {
+    display: inline-block; margin-top: 6px; padding: 4px 10px; font-size: 12px;
+    border-radius: 20px; border: 1px solid var(--sage); background: var(--sage-wash);
+    color: var(--sage); font-family: var(--font-sans); cursor: pointer;
+  }
+  .collect-btn {
+    display: inline-block; margin-top: 6px; padding: 4px 10px; font-size: 12px;
+    border-radius: 20px; border: 1px solid var(--clay); background: var(--clay-wash);
+    color: var(--clay); font-family: var(--font-sans); cursor: pointer;
+  }
+
+  .lock-screen {
+    position: fixed; inset: 0; background: var(--bg); z-index: 100;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .lock-card { max-width: 300px; width: 100%; text-align: center; }
+  .lock-card .wordmark, .lock-card .sub-boutique { text-align: center; }
+  .lock-msg { font-size: 13px; color: var(--ink-soft); margin: 18px 0 14px; }
+  .lock-card input { text-align: center; letter-spacing: 4px; font-size: 20px; }
+  .lock-error { font-size: 12.5px; color: var(--clay); margin-top: 10px; min-height: 16px; }
+  .entry-right { text-align: right; flex-shrink: 0; }
+  .entry-amount { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 14.5px; }
+  .entry-amount.plus { color: var(--clay); }
+  .entry-amount.minus { color: var(--sage); }
+  .entry-balance { font-size: 11px; color: var(--ink-soft); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .del-btn {
+    background: none; border: none; color: var(--ink-soft);
+    font-size: 18px; line-height: 1; padding: 2px 4px; cursor: pointer; margin-top: 2px;
+  }
+
+  .empty-state { color: var(--ink-soft); font-size: 14px; padding: 10px 2px 4px; }
+
+  .calc-output {
+    margin-top: 16px;
+    border-top: 1px dashed var(--line);
+    padding-top: 14px;
+  }
+  .calc-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14.5px; }
+  .calc-row .val { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .calc-row.total .val { color: var(--rose-deep); font-size: 18px; }
+
+  .client-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 13px 0; border-top: 1px solid var(--line); cursor: pointer;
+  }
+  .client-row:first-child { border-top: none; }
+  .client-name { font-size: 15.5px; font-weight: 500; }
+  .client-badge { font-size: 12.5px; font-variant-numeric: tabular-nums; padding: 3px 9px; border-radius: 20px; }
+  .client-badge.clay { background: var(--clay-wash); color: var(--clay); }
+  .client-badge.sage { background: var(--sage-wash); color: var(--sage); }
+  .client-badge.neutral { background: var(--line); color: var(--ink-soft); }
+
+  .client-detail { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .back-link { background:none; border:none; color: var(--rose-deep); font-size: 14px; padding: 0 0 6px; cursor: pointer; font-family: var(--font-sans); }
+
+  nav#tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--line);
+    display: flex;
+    padding: 6px max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    z-index: 10;
+  }
+  nav#tabbar .inner { max-width: 480px; margin: 0 auto; display: flex; width: 100%; }
+  nav#tabbar button {
+    flex: 1; background: none; border: none; padding: 8px 4px 6px;
+    font-family: var(--font-sans); font-size: 11.5px; color: var(--ink-soft);
+    cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  nav#tabbar button .dot { width: 5px; height: 5px; border-radius: 50%; background: transparent; }
+  nav#tabbar button.active { color: var(--rose-deep); font-weight: 600; }
+  nav#tabbar button.active .dot { background: var(--rose-deep); }
+
+  .settings-link { background: none; border: none; color: var(--ink-soft); font-size: 20px; cursor: pointer; font-family: var(--font-sans); padding: 4px 6px; line-height: 1; }
+
+  dialog#backupDialog {
+    border: none; border-radius: 18px; padding: 0; width: min(440px, 92vw);
+    background: var(--bg-elevated); color: var(--ink);
+  }
+  dialog#backupDialog::backdrop { background: rgba(0,0,0,0.4); }
+  dialog#backupDialog .dwrap { padding: 22px; }
+  dialog#backupDialog h3 { font-family: var(--font-serif); margin: 0 0 4px; }
+  dialog#backupDialog p.note { font-size: 13px; color: var(--ink-soft); margin: 0 0 10px; }
+  dialog#backupDialog .close-x { float: right; background:none; border:none; font-size: 20px; color: var(--ink-soft); cursor:pointer; }
+  .cfg-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .cfg-section:first-of-type { border-top: none; margin-top: 10px; padding-top: 0; }
+  .cfg-subhead { font-family: var(--font-serif); font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+  .cfg-btn-row { display: flex; gap: 8px; margin-top: 4px; }
+  .cfg-btn-row .btn-secondary { margin-top: 0; }
+  .sync-status { font-size: 12px; color: var(--ink-soft); margin: 8px 0 0; min-height: 14px; }
+</style>
+</head>
+<body>
+
+<div id="appRoot" style="display:none;">
+<header class="top">
+  <div class="wrap">
+    <div>
+      <div class="wordmark">DARA</div>
+      <div class="sub-boutique">Boutique</div>
+    </div>
+    <div class="headnote">
+      <button class="settings-link" id="openBackup" title="Configuración" aria-label="Configuración">⚙</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="view-saldo" class="view active">
+    <section class="card">
+      <div class="balance-figure">
+        <div class="who" id="saldoWho">Están al día</div>
+        <div class="amount neutral" id="saldoAmount">Gs. 0</div>
+      </div>
+      <div class="segmented">
+        <button type="button" id="segPlus" class="plus">Romi gastó en Dara</button>
+        <button type="button" id="segMinus" class="minus">Dara pagó / Romi retiró</button>
+      </div>
+      <label for="saldoDesc">Detalle</label>
+      <input type="text" id="saldoDesc" placeholder="Ej: pago envío Shein">
+      <label for="saldoMonto">Monto (Gs.)</label>
+      <input type="number" id="saldoMonto" inputmode="numeric" placeholder="0">
+      <label for="saldoFecha">Fecha</label>
+      <input type="date" id="saldoFecha">
+      <button class="btn-primary" id="addSaldo">Agregar movimiento</button>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">Movimientos</h2>
+      <ul class="ledger" id="saldoList"></ul>
+      <div class="empty-state" id="saldoEmpty">Todavía no hay movimientos.</div>
+    </section>
+  </section>
+
+  <section id="view-precios" class="view">
+    <section class="card">
+      <h2 class="section-title">Calculadora de precio</h2>
+      <label for="calcProducto">Producto (opcional)</label>
+      <input type="text" id="calcProducto" placeholder="Ej: blusa floreada">
+      <label for="calcCosto">Costo (USD)</label>
+      <input type="number" id="calcCosto" inputmode="decimal" placeholder="0">
+      <label for="calcTc">Tipo de cambio (Gs. por USD)</label>
+      <input type="number" id="calcTc" inputmode="numeric" value="6000">
+      <a href="https://www.google.com/search?q=cotizacion+dolar+guarani+hoy" target="_blank" rel="noopener" class="rate-link">Ver cotización de hoy ↗</a>
+      <label for="calcMargen">Margen (%)</label>
+      <input type="number" id="calcMargen" inputmode="numeric" value="70">
+      <div class="calc-output">
+        <div class="calc-row"><span>Costo en guaraníes</span><span class="val" id="outCostoGs">Gs. 0</span></div>
+        <div class="calc-row"><span>Ganancia</span><span class="val" id="outGanancia">Gs. 0</span></div>
+        <div class="calc-row total"><span>Precio de venta</span><span class="val" id="outPrecio">Gs. 0</span></div>
+      </div>
+      <button class="btn-primary" id="saveCalc">Guardar en historial</button>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">Historial de precios</h2>
+      <ul class="ledger" id="calcList"></ul>
+      <div class="empty-state" id="calcEmpty">Todavía no guardaste ningún cálculo.</div>
+    </section>
+  </section>
+
+  <section id="view-clientas" class="view">
+    <section class="card" id="clientesListCard">
+      <h2 class="section-title">Clientas</h2>
+      <label for="nuevaClienta">Agregar clienta</label>
+      <input type="text" id="nuevaClienta" placeholder="Nombre de la clienta">
+      <button class="btn-secondary" id="addClienta">Agregar</button>
+      <div style="margin-top: 16px;">
+        <div id="clientList"></div>
+        <div class="empty-state" id="clientEmpty">Todavía no cargaste ninguna clienta.</div>
+      </div>
+    </section>
+
+    <section class="card" id="clientDetailCard" style="display:none;">
+      <button class="back-link" id="backToClients">← Todas las clientas</button>
+      <div class="balance-figure">
+        <div class="who" id="clientWho"></div>
+        <div class="amount neutral" id="clientAmount">Gs. 0</div>
+      </div>
+
+      <label for="clientPhone">WhatsApp (opcional)</label>
+      <div class="phone-row">
+        <input type="text" id="clientPhone" placeholder="Ej: 0981123456" inputmode="tel">
+        <a id="clientWaBtn" class="wa-btn" target="_blank" rel="noopener" title="Abrir chat de WhatsApp">WhatsApp</a>
+      </div>
+
+      <div class="segmented">
+        <button type="button" id="clientSegPlus" class="plus">Debe (pedido/compra)</button>
+        <button type="button" id="clientSegMinus" class="minus">Pagó / seña</button>
+      </div>
+      <label for="clientMotivo">Motivo</label>
+      <input type="text" id="clientMotivo" placeholder="Ej: pedido 2 blusas Shein" list="motivoList" autocomplete="off">
+      <datalist id="motivoList"></datalist>
+      <label for="clientMonto">Monto (Gs.)</label>
+      <input type="number" id="clientMonto" inputmode="numeric" placeholder="0">
+      <label for="clientFecha">Fecha</label>
+      <input type="date" id="clientFecha">
+      <button class="btn-primary" id="addClientMov">Agregar</button>
+
+      <div class="client-detail">
+        <h2 class="section-title">Historial</h2>
+        <ul class="ledger" id="clientLedgerList"></ul>
+      </div>
+    </section>
+  </section>
+
+</main>
+
+<nav id="tabbar">
+  <div class="inner">
+    <button data-view="saldo" class="active"><span class="dot"></span>Saldo</button>
+    <button data-view="precios"><span class="dot"></span>Precios</button>
+    <button data-view="clientas"><span class="dot"></span>Clientas</button>
+  </div>
+</nav>
+</div>
+
+<div id="lockScreen" class="lock-screen">
+  <div class="lock-card">
+    <div class="wordmark">DARA</div>
+    <div class="sub-boutique">Boutique</div>
+    <p class="lock-msg" id="lockMsg"></p>
+    <input type="password" id="lockPinInput" inputmode="numeric" maxlength="6" placeholder="PIN">
+    <input type="password" id="lockPinConfirm" inputmode="numeric" maxlength="6" placeholder="Repetí el PIN" style="display:none; margin-top:10px;">
+    <button class="btn-primary" id="lockSubmit">Ingresar</button>
+    <p class="lock-error" id="lockError"></p>
+  </div>
+</div>
+
+<dialog id="backupDialog">
+  <div class="dwrap">
+    <button class="close-x" id="closeBackup">&times;</button>
+    <h3>Configuración</h3>
+
+    <div class="cfg-section">
+      <div class="cfg-subhead">1) Conexión con Google Sheet</div>
+      <p class="note">Pegá acá el link de tu Google Apps Script (el que termina en /exec). Una vez guardado, cada cambio que hagas en la app se sube solo a tu planilla, y podés traer los datos de vuelta si cambiás de celular.</p>
+      <label for="scriptUrlInput">Link de Google Apps Script</label>
+      <input type="text" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec" spellcheck="false">
+      <div class="cfg-btn-row">
+        <button class="btn-secondary" id="btnGuardarUrl">Guardar y traer datos</button>
+        <button class="btn-secondary" id="btnSyncNow">Subir cambios ahora</button>
+      </div>
+      <p class="sync-status" id="syncStatus"></p>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-subhead">2) Mensaje de WhatsApp</div>
+      <p class="note">Se usa cuando tocás el botón de WhatsApp en la ficha de una clienta. Podés usar (nombre), (monto) y (motivo) — se completan solos.</p>
+      <label for="waTemplateInput">Mensaje</label>
+      <textarea id="waTemplateInput"></textarea>
+      <button class="btn-secondary" id="btnGuardarPlantilla">Guardar mensaje</button>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-subhead">3) PIN de acceso</div>
+      <p class="note" id="pinNote">Protegé la app con un PIN. Se guarda solo en este teléfono.</p>
+      <label for="pinCurrentInput" id="pinCurrentLabel" style="display:none;">PIN actual</label>
+      <input type="password" id="pinCurrentInput" inputmode="numeric" style="display:none;" placeholder="PIN actual">
+      <label for="pinNewInput">PIN nuevo</label>
+      <input type="password" id="pinNewInput" inputmode="numeric" placeholder="4 a 6 números">
+      <button class="btn-secondary" id="btnGuardarPin">Guardar PIN</button>
+      <p class="sync-status" id="pinStatus"></p>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-subhead">4) Respaldo manual (sin Google Sheet)</div>
+      <p class="note">Si todavía no configuraste la planilla, copiá este texto de vez en cuando y guardalo en Notas, por si cambiás de celular o borrás el navegador.</p>
+      <label for="backupOut">Tu respaldo actual</label>
+      <textarea id="backupOut" readonly></textarea>
+      <button class="btn-secondary" id="copyBackup">Copiar respaldo</button>
+      <label for="backupIn" style="margin-top:18px;">Restaurar desde un respaldo</label>
+      <textarea id="backupIn" placeholder="Pegá acá el respaldo guardado"></textarea>
+      <button class="btn-primary" id="restoreBackup">Restaurar</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function(){
+  var STORE_KEY = 'dara_cuentas_v1';
+  var SCRIPT_URL_KEY = 'dara_script_url';
+  var SCRIPT_URL = '';
+  try { SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || ''; } catch(e){}
+  var state = { movimientos: [], clientas: [], precios: [] };
+  var syncTimer = null;
+
+  function load(){
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        state.movimientos = parsed.movimientos || [];
+        state.clientas = parsed.clientas || [];
+        state.precios = parsed.precios || [];
+      }
+    } catch(e) { console.warn('No se pudo leer el respaldo local', e); }
+  }
+  function save(){
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    catch(e) { console.warn('No se pudo guardar', e); }
+    scheduleSync();
+  }
+
+  function scheduleSync(){
+    if (!SCRIPT_URL) return;
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = setTimeout(syncSave, 1200);
+  }
+
+  function setSyncStatus(msg){
+    var el = document.getElementById('syncStatus');
+    if (el) el.textContent = msg;
+  }
+
+  function flattenForSync(){
+    var movClientas = [];
+    state.clientas.forEach(function(c){
+      (c.movimientos || []).forEach(function(m){
+        movClientas.push({ id: m.id, clienteId: c.id, fecha: m.fecha, motivo: m.motivo, monto: m.monto });
+      });
+    });
+    return {
+      saldo: state.movimientos.map(function(m){
+        return { id: m.id, fecha: m.fecha, descripcion: m.desc, monto: m.monto };
+      }),
+      clientas: state.clientas.map(function(c){ return { id: c.id, nombre: c.nombre, telefono: c.telefono || '' }; }),
+      movClientas: movClientas,
+      precios: state.precios.map(function(p){
+        return {
+          id: p.id, fecha: p.fecha, producto: p.producto, costoUsd: p.costoUsd,
+          tipoCambio: p.tc, margen: p.margen, costoGs: p.costoGs, precioVenta: p.precioVenta
+        };
+      }),
+      config: [ { clave: 'waTemplate', valor: WA_TEMPLATE } ]
+    };
+  }
+
+  async function syncSave(){
+    if (!SCRIPT_URL) return;
+    setSyncStatus('subiendo…');
+    try {
+      var res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'save', data: flattenForSync() })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      setSyncStatus('sincronizado ✓ (' + new Date().toLocaleTimeString('es-PY') + ')');
+    } catch(err) {
+      console.error(err);
+      setSyncStatus('no se pudo subir, se guardó solo en este teléfono');
+    }
+  }
+
+  async function syncLoad(){
+    if (!SCRIPT_URL) { setSyncStatus('pegá el link del Apps Script y tocá "Guardar y traer datos"'); return; }
+    setSyncStatus('cargando…');
+    try {
+      var res = await fetch(SCRIPT_URL, { method: 'GET' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var json = await res.json();
+      var clientesById = {};
+      (json.clientas || []).forEach(function(c){
+        clientesById[c.id] = { id: c.id, nombre: c.nombre, telefono: c.telefono || '', movimientos: [] };
+      });
+      (json.movClientas || []).forEach(function(m){
+        if (clientesById[m.clienteId]) {
+          clientesById[m.clienteId].movimientos.push({ id: m.id, fecha: m.fecha, motivo: m.motivo, monto: Number(m.monto) });
+        }
+      });
+      state.movimientos = (json.saldo || []).map(function(m){
+        return { id: m.id, fecha: m.fecha, desc: m.descripcion !== undefined ? m.descripcion : m.desc, monto: Number(m.monto) };
+      });
+      state.clientas = Object.keys(clientesById).map(function(k){ return clientesById[k]; });
+      state.precios = (json.precios || []).map(function(p){
+        return {
+          id: p.id, fecha: p.fecha, producto: p.producto,
+          costoUsd: Number(p.costoUsd), tc: Number(p.tipoCambio !== undefined ? p.tipoCambio : p.tc),
+          margen: Number(p.margen), costoGs: Number(p.costoGs), precioVenta: Number(p.precioVenta)
+        };
+      });
+      (json.config || []).forEach(function(row){
+        if (row.clave === 'waTemplate' && row.valor) {
+          WA_TEMPLATE = row.valor;
+          try { localStorage.setItem(WA_TEMPLATE_KEY, WA_TEMPLATE); } catch(e){}
+        }
+      });
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){}
+      renderSaldo(); renderCalcHistory(); renderClientList();
+      setSyncStatus(state.movimientos.length + ' movimientos, ' + state.clientas.length + ' clientas traídas ✓');
+    } catch(err) {
+      console.error(err);
+      setSyncStatus('no se pudo cargar (revisá el link y que el Apps Script esté publicado como "Cualquiera")');
+    }
+  }
+
+  function fmt(n){
+    n = Math.round(n || 0);
+    return 'Gs. ' + n.toLocaleString('es-PY');
+  }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function todayStr(){ return new Date().toISOString().slice(0,10); }
+  function fmtDate(d){
+    try {
+      var parts = d.split('-');
+      return parts[2] + '/' + parts[1] + '/' + parts[0].slice(2);
+    } catch(e){ return d; }
+  }
+
+  /* ---------- Tabs ---------- */
+  var tabButtons = document.querySelectorAll('#tabbar button');
+  var views = document.querySelectorAll('.view');
+  tabButtons.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      tabButtons.forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      views.forEach(function(v){ v.classList.remove('active'); });
+      document.getElementById('view-' + btn.dataset.view).classList.add('active');
+    });
+  });
+
+  /* ---------- Saldo Dara-Romi ---------- */
+  var saldoSign = 1;
+  var segPlus = document.getElementById('segPlus');
+  var segMinus = document.getElementById('segMinus');
+  function setSaldoSign(sign){
+    saldoSign = sign;
+    segPlus.classList.toggle('selected', sign === 1);
+    segMinus.classList.toggle('selected', sign === -1);
+  }
+  segPlus.addEventListener('click', function(){ setSaldoSign(1); });
+  segMinus.addEventListener('click', function(){ setSaldoSign(-1); });
+  setSaldoSign(1);
+  document.getElementById('saldoFecha').value = todayStr();
+
+  function renderSaldo(){
+    var balance = state.movimientos.reduce(function(sum, m){ return sum + m.monto; }, 0);
+    var whoEl = document.getElementById('saldoWho');
+    var amtEl = document.getElementById('saldoAmount');
+    amtEl.classList.remove('clay','sage','neutral');
+    if (balance > 0){ whoEl.textContent = 'Dara le debe a Romi'; amtEl.textContent = fmt(balance); amtEl.classList.add('clay'); }
+    else if (balance < 0){ whoEl.textContent = 'Romi le debe a Dara'; amtEl.textContent = fmt(-balance); amtEl.classList.add('sage'); }
+    else { whoEl.textContent = 'Están al día'; amtEl.textContent = fmt(0); amtEl.classList.add('neutral'); }
+
+    var list = document.getElementById('saldoList');
+    var empty = document.getElementById('saldoEmpty');
+    list.innerHTML = '';
+    if (state.movimientos.length === 0){ empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+
+    var running = 0;
+    var withRunning = state.movimientos.map(function(m){
+      running += m.monto;
+      return { m: m, bal: running };
+    });
+    withRunning.slice().reverse().forEach(function(item){
+      var m = item.m;
+      var li = document.createElement('li');
+      var left = document.createElement('div'); left.className = 'entry-left';
+      var desc = document.createElement('div'); desc.className = 'entry-desc'; desc.textContent = m.desc || '(sin detalle)';
+      var meta = document.createElement('div'); meta.className = 'entry-meta'; meta.textContent = fmtDate(m.fecha);
+      left.appendChild(desc); left.appendChild(meta);
+      if (m.monto > 0) {
+        var payBtn = document.createElement('button'); payBtn.className = 'pay-btn'; payBtn.textContent = 'Marcar pagado';
+        payBtn.addEventListener('click', function(){
+          setSaldoSign(-1);
+          document.getElementById('saldoDesc').value = 'Pago: ' + (m.desc || 'saldo');
+          document.getElementById('saldoMonto').value = m.monto;
+          document.getElementById('saldoFecha').value = todayStr();
+          document.querySelector('#view-saldo .card').scrollIntoView({ behavior: 'smooth' });
+        });
+        left.appendChild(payBtn);
+      } else if (m.monto < 0) {
+        var collectBtn = document.createElement('button'); collectBtn.className = 'collect-btn'; collectBtn.textContent = 'Marcar cobrado';
+        collectBtn.addEventListener('click', function(){
+          setSaldoSign(1);
+          document.getElementById('saldoDesc').value = 'Cobro: ' + (m.desc || 'saldo');
+          document.getElementById('saldoMonto').value = Math.abs(m.monto);
+          document.getElementById('saldoFecha').value = todayStr();
+          document.querySelector('#view-saldo .card').scrollIntoView({ behavior: 'smooth' });
+        });
+        left.appendChild(collectBtn);
+      }
+      var right = document.createElement('div'); right.className = 'entry-right';
+      var amt = document.createElement('div'); amt.className = 'entry-amount ' + (m.monto >= 0 ? 'plus' : 'minus');
+      amt.textContent = (m.monto >= 0 ? '+' : '−') + fmt(Math.abs(m.monto)).replace('Gs. ','');
+      var bal = document.createElement('div'); bal.className = 'entry-balance';
+      bal.textContent = item.bal >= 0 ? ('Dara debe ' + fmt(item.bal)) : ('Romi debe ' + fmt(-item.bal));
+      var del = document.createElement('button'); del.className='del-btn'; del.innerHTML='&times;'; del.title='Eliminar';
+      del.addEventListener('click', function(){
+        state.movimientos = state.movimientos.filter(function(x){ return x.id !== m.id; });
+        save(); renderSaldo();
+      });
+      right.appendChild(amt); right.appendChild(bal); right.appendChild(del);
+
+      li.appendChild(left); li.appendChild(right);
+      list.appendChild(li);
+    });
+  }
+
+  document.getElementById('addSaldo').addEventListener('click', function(){
+    var descEl = document.getElementById('saldoDesc');
+    var montoEl = document.getElementById('saldoMonto');
+    var fechaEl = document.getElementById('saldoFecha');
+    var monto = parseFloat(montoEl.value);
+    if (!monto || monto <= 0) { montoEl.focus(); return; }
+    state.movimientos.push({ id: uid(), fecha: fechaEl.value || todayStr(), desc: descEl.value.trim(), monto: monto * saldoSign });
+    save(); renderSaldo();
+    descEl.value = ''; montoEl.value = '';
+  });
+
+  /* ---------- Calculadora de precios ---------- */
+  var calcCosto = document.getElementById('calcCosto');
+  var calcTc = document.getElementById('calcTc');
+  var calcMargen = document.getElementById('calcMargen');
+  function currentCalc(){
+    var costoUsd = parseFloat(calcCosto.value) || 0;
+    var tc = parseFloat(calcTc.value) || 0;
+    var margen = parseFloat(calcMargen.value) || 0;
+    var costoGs = costoUsd * tc;
+    var precioVenta = costoGs * (1 + margen/100);
+    var ganancia = precioVenta - costoGs;
+    return { costoUsd: costoUsd, tc: tc, margen: margen, costoGs: costoGs, precioVenta: precioVenta, ganancia: ganancia };
+  }
+  function renderCalcOutput(){
+    var c = currentCalc();
+    document.getElementById('outCostoGs').textContent = fmt(c.costoGs);
+    document.getElementById('outGanancia').textContent = fmt(c.ganancia);
+    document.getElementById('outPrecio').textContent = fmt(c.precioVenta);
+  }
+  [calcCosto, calcTc, calcMargen].forEach(function(el){ el.addEventListener('input', renderCalcOutput); });
+  renderCalcOutput();
+
+  function renderCalcHistory(){
+    var list = document.getElementById('calcList');
+    var empty = document.getElementById('calcEmpty');
+    list.innerHTML = '';
+    if (state.precios.length === 0){ empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    state.precios.slice().reverse().forEach(function(p){
+      var li = document.createElement('li');
+      var left = document.createElement('div'); left.className = 'entry-left';
+      var desc = document.createElement('div'); desc.className = 'entry-desc'; desc.textContent = p.producto || '(sin nombre)';
+      var meta = document.createElement('div'); meta.className = 'entry-meta';
+      meta.textContent = 'US$ ' + p.costoUsd + ' × ' + p.tc.toLocaleString('es-PY') + ' + ' + p.margen + '%';
+      left.appendChild(desc); left.appendChild(meta);
+      var right = document.createElement('div'); right.className = 'entry-right';
+      var amt = document.createElement('div'); amt.className = 'entry-amount plus'; amt.textContent = fmt(p.precioVenta).replace('Gs. ','');
+      var del = document.createElement('button'); del.className='del-btn'; del.innerHTML='&times;';
+      del.addEventListener('click', function(){
+        state.precios = state.precios.filter(function(x){ return x.id !== p.id; });
+        save(); renderCalcHistory();
+      });
+      right.appendChild(amt); right.appendChild(del);
+      li.appendChild(left); li.appendChild(right);
+      list.appendChild(li);
+    });
+  }
+
+  document.getElementById('saveCalc').addEventListener('click', function(){
+    var c = currentCalc();
+    if (!c.costoUsd){ calcCosto.focus(); return; }
+    state.precios.push({
+      id: uid(), fecha: todayStr(), producto: document.getElementById('calcProducto').value.trim(),
+      costoUsd: c.costoUsd, tc: c.tc, margen: c.margen, costoGs: c.costoGs, precioVenta: c.precioVenta
+    });
+    save(); renderCalcHistory();
+    document.getElementById('calcProducto').value = '';
+  });
+
+  /* ---------- Clientas ---------- */
+  var activeClientId = null;
+  var clientSaldoSign = 1;
+  var clientSegPlus = document.getElementById('clientSegPlus');
+  var clientSegMinus = document.getElementById('clientSegMinus');
+  function setClientSign(sign){
+    clientSaldoSign = sign;
+    clientSegPlus.classList.toggle('selected', sign === 1);
+    clientSegMinus.classList.toggle('selected', sign === -1);
+  }
+  clientSegPlus.addEventListener('click', function(){ setClientSign(1); });
+  clientSegMinus.addEventListener('click', function(){ setClientSign(-1); });
+  setClientSign(1);
+  document.getElementById('clientFecha').value = todayStr();
+
+  function clientBalance(c){
+    return c.movimientos.reduce(function(sum, m){ return sum + m.monto; }, 0);
+  }
+
+  function renderClientList(){
+    var wrap = document.getElementById('clientList');
+    var empty = document.getElementById('clientEmpty');
+    wrap.innerHTML = '';
+    if (state.clientas.length === 0){ empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    state.clientas.forEach(function(c){
+      var bal = clientBalance(c);
+      var row = document.createElement('div'); row.className = 'client-row';
+      var name = document.createElement('div'); name.className = 'client-name'; name.textContent = c.nombre;
+      var badge = document.createElement('div');
+      badge.className = 'client-badge ' + (bal > 0 ? 'clay' : (bal < 0 ? 'sage' : 'neutral'));
+      badge.textContent = bal > 0 ? ('debe ' + fmt(bal)) : (bal < 0 ? ('a favor ' + fmt(-bal)) : 'al día');
+      row.appendChild(name); row.appendChild(badge);
+      row.addEventListener('click', function(){ openClient(c.id); });
+      wrap.appendChild(row);
+    });
+  }
+
+  document.getElementById('addClienta').addEventListener('click', function(){
+    var input = document.getElementById('nuevaClienta');
+    var nombre = input.value.trim();
+    if (!nombre) { input.focus(); return; }
+    state.clientas.push({ id: uid(), nombre: nombre, telefono: '', movimientos: [] });
+    save(); renderClientList();
+    input.value = '';
+  });
+
+  function openClient(id){
+    activeClientId = id;
+    document.getElementById('clientesListCard').style.display = 'none';
+    document.getElementById('clientDetailCard').style.display = 'block';
+    renderClientDetail();
+  }
+  document.getElementById('backToClients').addEventListener('click', function(){
+    activeClientId = null;
+    document.getElementById('clientDetailCard').style.display = 'none';
+    document.getElementById('clientesListCard').style.display = 'block';
+    renderClientList();
+  });
+
+  var WA_TEMPLATE_KEY = 'dara_wa_template';
+  var WA_TEMPLATE_DEFAULT = 'Holaa (nombre). Solo paso a recordarte que me debes (monto) por (motivo). Cualquier cosa me transferis. Gracias';
+  var WA_TEMPLATE = WA_TEMPLATE_DEFAULT;
+  try { WA_TEMPLATE = localStorage.getItem(WA_TEMPLATE_KEY) || WA_TEMPLATE_DEFAULT; } catch(e){}
+
+  function waNumber(raw){
+    var digits = (raw || '').replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.indexOf('595') === 0) return digits;
+    if (digits.indexOf('0') === 0) return '595' + digits.slice(1);
+    return '595' + digits;
+  }
+  function waMessageFor(c){
+    var bal = clientBalance(c);
+    var motivos = [];
+    c.movimientos.forEach(function(m){
+      if (m.monto > 0 && m.motivo && motivos.indexOf(m.motivo) === -1) motivos.push(m.motivo);
+    });
+    var motivoTxt = motivos.length ? motivos.join(', ') : 'tu pedido';
+    var montoTxt = fmt(Math.abs(bal));
+    return WA_TEMPLATE
+      .replace(/\(nombre\)/gi, c.nombre)
+      .replace(/\(monto\)/gi, montoTxt)
+      .replace(/\(motivo\)/gi, motivoTxt);
+  }
+  function updateWaButton(c){
+    var btn = document.getElementById('clientWaBtn');
+    var num = waNumber(c.telefono);
+    if (num){
+      btn.href = 'https://wa.me/' + num + '?text=' + encodeURIComponent(waMessageFor(c));
+      btn.classList.add('enabled');
+    } else {
+      btn.href = '#'; btn.classList.remove('enabled');
+    }
+  }
+  document.getElementById('clientPhone').addEventListener('input', function(){
+    var c = state.clientas.find(function(x){ return x.id === activeClientId; });
+    if (!c) return;
+    c.telefono = this.value;
+    updateWaButton(c);
+    save();
+  });
+
+  function renderClientDetail(){
+    var c = state.clientas.find(function(x){ return x.id === activeClientId; });
+    if (!c) return;
+    var bal = clientBalance(c);
+    document.getElementById('clientWho').textContent = c.nombre;
+    document.getElementById('clientPhone').value = c.telefono || '';
+    updateWaButton(c);
+
+    var datalist = document.getElementById('motivoList');
+    var motivos = [];
+    c.movimientos.forEach(function(m){
+      if (m.motivo && motivos.indexOf(m.motivo) === -1) motivos.push(m.motivo);
+    });
+    datalist.innerHTML = motivos.map(function(v){ return '<option value="' + v.replace(/"/g,'&quot;') + '">'; }).join('');
+
+    var amtEl = document.getElementById('clientAmount');
+    amtEl.classList.remove('clay','sage','neutral');
+    if (bal > 0){ amtEl.textContent = fmt(bal) + ' — te debe'; amtEl.classList.add('clay'); }
+    else if (bal < 0){ amtEl.textContent = fmt(-bal) + ' a favor'; amtEl.classList.add('sage'); }
+    else { amtEl.textContent = 'Está al día'; amtEl.classList.add('neutral'); }
+
+    var list = document.getElementById('clientLedgerList');
+    list.innerHTML = '';
+    if (c.movimientos.length === 0){
+      var e = document.createElement('div'); e.className = 'empty-state'; e.textContent = 'Todavía no hay movimientos con esta clienta.';
+      list.appendChild(e); return;
+    }
+    var running = 0;
+    var withRunning = c.movimientos.map(function(m){ running += m.monto; return { m: m, bal: running }; });
+    withRunning.slice().reverse().forEach(function(item){
+      var m = item.m;
+      var li = document.createElement('li');
+      var left = document.createElement('div'); left.className = 'entry-left';
+      var desc = document.createElement('div'); desc.className = 'entry-desc'; desc.textContent = m.motivo || '(sin motivo)';
+      var meta = document.createElement('div'); meta.className = 'entry-meta'; meta.textContent = fmtDate(m.fecha);
+      left.appendChild(desc); left.appendChild(meta);
+      if (m.monto > 0) {
+        var payBtn2 = document.createElement('button'); payBtn2.className = 'pay-btn'; payBtn2.textContent = 'Marcar pagado';
+        payBtn2.addEventListener('click', function(){
+          setClientSign(-1);
+          document.getElementById('clientMotivo').value = 'Pago: ' + (m.motivo || 'saldo');
+          document.getElementById('clientMonto').value = m.monto;
+          document.getElementById('clientFecha').value = todayStr();
+          document.getElementById('clientDetailCard').scrollIntoView({ behavior: 'smooth' });
+        });
+        left.appendChild(payBtn2);
+      }
+      var right = document.createElement('div'); right.className = 'entry-right';
+      var amt = document.createElement('div'); amt.className = 'entry-amount ' + (m.monto >= 0 ? 'plus' : 'minus');
+      amt.textContent = (m.monto >= 0 ? '+' : '−') + fmt(Math.abs(m.monto)).replace('Gs. ','');
+      var bal2 = document.createElement('div'); bal2.className = 'entry-balance';
+      bal2.textContent = item.bal >= 0 ? ('debe ' + fmt(item.bal)) : ('a favor ' + fmt(-item.bal));
+      var del = document.createElement('button'); del.className='del-btn'; del.innerHTML='&times;';
+      del.addEventListener('click', function(){
+        c.movimientos = c.movimientos.filter(function(x){ return x.id !== m.id; });
+        save(); renderClientDetail();
+      });
+      right.appendChild(amt); right.appendChild(bal2); right.appendChild(del);
+      li.appendChild(left); li.appendChild(right);
+      list.appendChild(li);
+    });
+  }
+
+  document.getElementById('addClientMov').addEventListener('click', function(){
+    var c = state.clientas.find(function(x){ return x.id === activeClientId; });
+    if (!c) return;
+    var motivoEl = document.getElementById('clientMotivo');
+    var montoEl = document.getElementById('clientMonto');
+    var fechaEl = document.getElementById('clientFecha');
+    var monto = parseFloat(montoEl.value);
+    if (!monto || monto <= 0) { montoEl.focus(); return; }
+    c.movimientos.push({ id: uid(), fecha: fechaEl.value || todayStr(), motivo: motivoEl.value.trim(), monto: monto * clientSaldoSign });
+    save(); renderClientDetail();
+    motivoEl.value = ''; montoEl.value = '';
+  });
+
+  /* ---------- Backup / Configuración ---------- */
+  var dialog = document.getElementById('backupDialog');
+  document.getElementById('openBackup').addEventListener('click', function(){
+    document.getElementById('backupOut').value = JSON.stringify(state, null, 2);
+    document.getElementById('scriptUrlInput').value = SCRIPT_URL;
+    document.getElementById('waTemplateInput').value = WA_TEMPLATE;
+    refreshPinSectionUI();
+    setSyncStatus(SCRIPT_URL ? '' : 'sin conectar — los datos solo están en este teléfono');
+    dialog.showModal();
+  });
+  document.getElementById('btnGuardarPlantilla').addEventListener('click', function(){
+    var val = document.getElementById('waTemplateInput').value.trim();
+    if (!val) return;
+    WA_TEMPLATE = val;
+    try { localStorage.setItem(WA_TEMPLATE_KEY, WA_TEMPLATE); } catch(e){}
+    scheduleSync();
+    if (activeClientId) {
+      var c = state.clientas.find(function(x){ return x.id === activeClientId; });
+      if (c) updateWaButton(c);
+    }
+  });
+  document.getElementById('closeBackup').addEventListener('click', function(){ dialog.close(); });
+  document.getElementById('btnGuardarUrl').addEventListener('click', function(){
+    var url = document.getElementById('scriptUrlInput').value.trim();
+    if (!url){ setSyncStatus('pegá el link de tu Google Apps Script (termina en /exec)'); return; }
+    SCRIPT_URL = url;
+    try { localStorage.setItem(SCRIPT_URL_KEY, SCRIPT_URL); } catch(e){}
+    syncLoad();
+  });
+  document.getElementById('btnSyncNow').addEventListener('click', function(){
+    if (!SCRIPT_URL){ setSyncStatus('primero guardá el link del Apps Script'); return; }
+    syncSave();
+  });
+  document.getElementById('copyBackup').addEventListener('click', function(){
+    var ta = document.getElementById('backupOut');
+    ta.select();
+    try { document.execCommand('copy'); }
+    catch(e){}
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).catch(function(){});
+    }
+  });
+  document.getElementById('restoreBackup').addEventListener('click', function(){
+    var raw = document.getElementById('backupIn').value.trim();
+    if (!raw) return;
+    try {
+      var parsed = JSON.parse(raw);
+      state.movimientos = parsed.movimientos || [];
+      state.clientas = parsed.clientas || [];
+      state.precios = parsed.precios || [];
+      save();
+      renderSaldo(); renderCalcHistory(); renderClientList();
+      dialog.close();
+    } catch(e){
+      alert('No se pudo leer ese respaldo. Revisá que esté completo.');
+    }
+  });
+
+  /* ---------- PIN ---------- */
+  var PIN_HASH_KEY = 'dara_pin_hash';
+  var SESSION_KEY = 'dara_session_ok';
+
+  async function sha256Hex(str){
+    var enc = new TextEncoder().encode(str);
+    var buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+  }
+
+  function showApp(){
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('appRoot').style.display = 'block';
+  }
+
+  function refreshPinSectionUI(){
+    var hasPin = false;
+    try { hasPin = !!localStorage.getItem(PIN_HASH_KEY); } catch(e){}
+    document.getElementById('pinCurrentLabel').style.display = hasPin ? 'block' : 'none';
+    document.getElementById('pinCurrentInput').style.display = hasPin ? 'block' : 'none';
+    document.getElementById('pinCurrentInput').value = '';
+    document.getElementById('pinNewInput').value = '';
+    document.getElementById('pinNote').textContent = hasPin
+      ? 'Ya tenés un PIN configurado en este teléfono. Para cambiarlo, ingresá el actual y el nuevo.'
+      : 'Todavía no configuraste un PIN en este teléfono.';
+    document.getElementById('pinStatus').textContent = '';
+  }
+
+  document.getElementById('btnGuardarPin').addEventListener('click', async function(){
+    var statusEl = document.getElementById('pinStatus');
+    var hasPin = false;
+    var storedHash = '';
+    try { storedHash = localStorage.getItem(PIN_HASH_KEY) || ''; hasPin = !!storedHash; } catch(e){}
+    var newPin = document.getElementById('pinNewInput').value.trim();
+    if (!/^[0-9]{4,6}$/.test(newPin)) { statusEl.textContent = 'el PIN debe tener de 4 a 6 números'; return; }
+    if (hasPin) {
+      var currentPin = document.getElementById('pinCurrentInput').value.trim();
+      var currentHash = await sha256Hex(currentPin);
+      if (currentHash !== storedHash) { statusEl.textContent = 'el PIN actual no coincide'; return; }
+    }
+    var newHash = await sha256Hex(newPin);
+    try { localStorage.setItem(PIN_HASH_KEY, newHash); } catch(e){}
+    statusEl.textContent = 'PIN guardado ✓';
+    refreshPinSectionUI();
+  });
+
+  function initLock(){
+    var lockMsg = document.getElementById('lockMsg');
+    var lockConfirm = document.getElementById('lockPinConfirm');
+    var lockError = document.getElementById('lockError');
+    var lockInput = document.getElementById('lockPinInput');
+    var lockSubmit = document.getElementById('lockSubmit');
+    var storedHash = '';
+    try { storedHash = localStorage.getItem(PIN_HASH_KEY) || ''; } catch(e){}
+    var sessionOk = false;
+    try { sessionOk = localStorage.getItem(SESSION_KEY) === '1'; } catch(e){}
+
+    if (storedHash && sessionOk) { showApp(); return; }
+
+    var settingUp = !storedHash;
+    lockMsg.textContent = settingUp
+      ? 'Creá un PIN para proteger la app.'
+      : 'Ingresá tu PIN para entrar.';
+    lockConfirm.style.display = settingUp ? 'block' : 'none';
+
+    lockSubmit.addEventListener('click', async function(){
+      lockError.textContent = '';
+      var pin = lockInput.value.trim();
+      if (settingUp) {
+        var confirmPin = lockConfirm.value.trim();
+        if (!/^[0-9]{4,6}$/.test(pin)) { lockError.textContent = 'el PIN debe tener de 4 a 6 números'; return; }
+        if (pin !== confirmPin) { lockError.textContent = 'los dos PIN no coinciden'; return; }
+        var newHash = await sha256Hex(pin);
+        try {
+          localStorage.setItem(PIN_HASH_KEY, newHash);
+          localStorage.setItem(SESSION_KEY, '1');
+        } catch(e){}
+        showApp();
+      } else {
+        var tryHash = await sha256Hex(pin);
+        if (tryHash === storedHash) {
+          try { localStorage.setItem(SESSION_KEY, '1'); } catch(e){}
+          showApp();
+        } else {
+          lockError.textContent = 'PIN incorrecto';
+          lockInput.value = '';
+        }
+      }
+    });
+    lockInput.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !settingUp) lockSubmit.click(); });
+  }
+
+  /* ---------- Init ---------- */
+  load();
+  renderSaldo();
+  renderCalcHistory();
+  renderClientList();
+  initLock();
+})();
+</script>
+</body>
+</html>
