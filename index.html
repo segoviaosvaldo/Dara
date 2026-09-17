@@ -268,6 +268,15 @@
   .calc-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14.5px; }
   .calc-row .val { font-variant-numeric: tabular-nums; font-weight: 600; }
   .calc-row.total .val { color: var(--rose-deep); font-size: 18px; }
+  .total-edit { color: var(--rose-deep); font-size: 18px; font-weight: 600; }
+  .total-edit input {
+    width: 108px; margin-left: 2px; padding: 3px 6px;
+    font-family: var(--font-sans); font-weight: 600; font-size: 18px;
+    color: var(--rose-deep); text-align: right;
+    border: 1px solid transparent; border-radius: 8px; background: transparent;
+    font-variant-numeric: tabular-nums;
+  }
+  .total-edit input:focus { border-color: var(--line); background: var(--bg); outline: none; }
 
   .client-row {
     display: flex; justify-content: space-between; align-items: flex-start;
@@ -401,7 +410,6 @@
       <input type="text" id="pedDetalle" placeholder="Ej: vestido + cartera">
       <label for="calcCosto">Costo (USD)</label>
       <input type="text" id="calcCosto" inputmode="decimal" placeholder="0">
-      <p class="ped-sub" style="margin-top:4px;">Podés usar coma o punto para los centavos (ej: 12,05 o 12.05)</p>
       <label for="calcTc">Tipo de cambio (Gs. por USD)</label>
       <input type="text" id="calcTc" inputmode="decimal">
       <a href="https://www.google.com/search?q=cotizacion+dolar+guarani+hoy" target="_blank" rel="noopener" class="rate-link">Ver cotización de hoy ↗</a>
@@ -410,7 +418,10 @@
       <div class="calc-output">
         <div class="calc-row"><span>Costo en guaraníes</span><span class="val" id="outCostoGs">Gs. 0</span></div>
         <div class="calc-row"><span>Ganancia</span><span class="val" id="outGanancia">Gs. 0</span></div>
-        <div class="calc-row total"><span>Total del pedido</span><span class="val" id="outPrecio">Gs. 0</span></div>
+        <div class="calc-row total">
+          <span>Total del pedido</span>
+          <span class="total-edit">Gs. <input type="text" inputmode="decimal" id="outPrecio"></span>
+        </div>
       </div>
       <label for="pedEntregado">Ya entregó (seña, Gs. — opcional)</label>
       <input type="number" id="pedEntregado" inputmode="numeric" placeholder="0">
@@ -955,10 +966,16 @@
   function renderCalcOutput(){
     var c = currentCalc();
     document.getElementById('outCostoGs').textContent = fmt(c.costoGs);
-    document.getElementById('outGanancia').textContent = fmt(c.ganancia);
-    document.getElementById('outPrecio').textContent = fmt(c.total);
+    document.getElementById('outPrecio').value = Math.round(c.total);
+    updateGananciaFromTotal();
+  }
+  function updateGananciaFromTotal(){
+    var c = currentCalc();
+    var totalVal = parseNum(document.getElementById('outPrecio').value);
+    document.getElementById('outGanancia').textContent = fmt(totalVal - c.costoGs);
   }
   [calcCosto, calcTc, calcMargen].forEach(function(el){ el.addEventListener('input', renderCalcOutput); });
+  document.getElementById('outPrecio').addEventListener('input', updateGananciaFromTotal);
   renderCalcOutput();
 
   function pedidoEntregado(p){ return (p.pagos || []).reduce(function(sum, m){ return sum + m.monto; }, 0); }
@@ -1191,6 +1208,8 @@
     if (!c.costoUsd){ calcCosto.focus(); return; }
     var clienteEl = document.getElementById('pedCliente');
     if (!clienteEl.value.trim()) { clienteEl.focus(); return; }
+    var totalFinal = parseNum(document.getElementById('outPrecio').value) || c.total;
+    var gananciaFinal = totalFinal - c.costoGs;
     var entregadoVal = parseFloat(document.getElementById('pedEntregado').value) || 0;
     var fecha = todayStr();
     var pagos = entregadoVal > 0 ? [{ id: uid(), fecha: fecha, monto: entregadoVal }] : [];
@@ -1200,7 +1219,7 @@
       telefono: document.getElementById('pedTelefono').value.trim(),
       numero: document.getElementById('pedNumero').value.trim(),
       detalle: document.getElementById('pedDetalle').value.trim(),
-      costoUsd: c.costoUsd, tc: c.tc, margen: c.margen, costoGs: c.costoGs, ganancia: c.ganancia, total: c.total,
+      costoUsd: c.costoUsd, tc: c.tc, margen: c.margen, costoGs: c.costoGs, ganancia: gananciaFinal, total: totalFinal,
       pagos: pagos, estado: 'pendiente'
     });
     save(); renderPedidosList();
@@ -1321,9 +1340,11 @@
     var input = document.getElementById('nuevaClienta');
     var nombre = input.value.trim();
     if (!nombre) { input.focus(); return; }
-    state.clientas.push({ id: uid(), nombre: nombre, telefono: '', movimientos: [] });
-    save(); renderClientList();
+    var nueva = { id: uid(), nombre: nombre, telefono: '', movimientos: [] };
+    state.clientas.push(nueva);
+    save();
     input.value = '';
+    openClient(nueva.id);
   });
 
   function openClient(id){
