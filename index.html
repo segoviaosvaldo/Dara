@@ -629,7 +629,8 @@
   function todayStr(){ return new Date().toISOString().slice(0,10); }
   function fmtDate(d){
     try {
-      var parts = d.split('-');
+      var datePart = String(d).split('T')[0];
+      var parts = datePart.split('-');
       return parts[2] + '/' + parts[1] + '/' + parts[0].slice(2);
     } catch(e){ return d; }
   }
