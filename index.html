@@ -400,9 +400,10 @@
       <label for="pedDetalle">Detalle</label>
       <input type="text" id="pedDetalle" placeholder="Ej: vestido + cartera">
       <label for="calcCosto">Costo (USD)</label>
-      <input type="number" id="calcCosto" inputmode="decimal" placeholder="0">
+      <input type="text" id="calcCosto" inputmode="decimal" placeholder="0">
+      <p class="ped-sub" style="margin-top:4px;">Podés usar coma o punto para los centavos (ej: 12,05 o 12.05)</p>
       <label for="calcTc">Tipo de cambio (Gs. por USD)</label>
-      <input type="number" id="calcTc" inputmode="numeric" value="6000">
+      <input type="text" id="calcTc" inputmode="decimal">
       <a href="https://www.google.com/search?q=cotizacion+dolar+guarani+hoy" target="_blank" rel="noopener" class="rate-link">Ver cotización de hoy ↗</a>
       <label for="calcMargen">Margen (%)</label>
       <input type="number" id="calcMargen" inputmode="numeric" value="70">
@@ -579,7 +580,15 @@
     </div>
 
     <div class="cfg-section">
-      <div class="cfg-subhead">2) Mensajes de WhatsApp</div>
+      <div class="cfg-subhead">2) Pedidos</div>
+      <p class="note">Se usa como valor inicial del tipo de cambio cada vez que abrís "Nuevo pedido", para no tener que buscarlo de nuevo cada vez.</p>
+      <label for="defaultTcInput">Tipo de cambio guardado (Gs. por USD)</label>
+      <input type="text" id="defaultTcInput" inputmode="decimal">
+      <button class="btn-secondary" id="btnGuardarTc">Guardar</button>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-subhead">3) Mensajes de WhatsApp</div>
       <p class="note">Recordatorio de saldo (ficha de clienta). Podés usar (nombre), (monto) y (motivo).</p>
       <label for="waTemplateInput">Mensaje de recordatorio</label>
       <textarea id="waTemplateInput"></textarea>
@@ -597,7 +606,8 @@
     </div>
 
     <div class="cfg-section">
-      <div class="cfg-subhead">3) PIN de acceso</div>
+      <div class="cfg-subhead">4) PIN de acceso</div>
+
       <p class="note" id="pinNote">Protegé la app con un PIN. Se guarda solo en este teléfono.</p>
       <label for="pinCurrentInput" id="pinCurrentLabel" style="display:none;">PIN actual</label>
       <input type="password" id="pinCurrentInput" inputmode="numeric" style="display:none;" placeholder="PIN actual">
@@ -609,7 +619,7 @@
     </div>
 
     <div class="cfg-section">
-      <div class="cfg-subhead">4) Respaldo manual (por las dudas)</div>
+      <div class="cfg-subhead">5) Respaldo manual (por las dudas)</div>
       <p class="note">Ahora todo se guarda directo en tu planilla, así que esto ya no hace falta para el día a día. Sirve solo como copia extra, o para restaurar datos a mano si alguna vez hace falta.</p>
       <label for="backupOut">Tu respaldo actual</label>
       <textarea id="backupOut" readonly></textarea>
@@ -685,6 +695,7 @@
         { clave: 'waTemplate', valor: WA_TEMPLATE },
         { clave: 'waTemplateLlego', valor: WA_TEMPLATE_LLEGO },
         { clave: 'waTemplateListo', valor: WA_TEMPLATE_LISTO },
+        { clave: 'tipoCambioDefault', valor: String(DEFAULT_TC) },
         { clave: 'pinHash', valor: getStoredPinHash() }
       ]
     };
@@ -775,6 +786,11 @@
         if (row.clave === 'waTemplateListo' && row.valor) {
           WA_TEMPLATE_LISTO = row.valor;
           try { localStorage.setItem(WA_TEMPLATE_LISTO_KEY, WA_TEMPLATE_LISTO); } catch(e){}
+        }
+        if (row.clave === 'tipoCambioDefault' && row.valor) {
+          DEFAULT_TC = parseNum(row.valor) || DEFAULT_TC;
+          try { localStorage.setItem(DEFAULT_TC_KEY, String(DEFAULT_TC)); } catch(e){}
+          applyDefaultTc();
         }
         if (row.clave === 'pinHash' && row.valor) {
           try { localStorage.setItem(PIN_HASH_KEY, row.valor); } catch(e){}
@@ -920,10 +936,17 @@
     try { localStorage.setItem(PED_SORT_KEY, v); } catch(e){}
   }
 
+  function parseNum(str){
+    if (typeof str !== 'string') str = String(str || '');
+    var cleaned = str.trim().replace(',', '.');
+    var n = parseFloat(cleaned);
+    return isNaN(n) ? 0 : n;
+  }
+
   function currentCalc(){
-    var costoUsd = parseFloat(calcCosto.value) || 0;
-    var tc = parseFloat(calcTc.value) || 0;
-    var margen = parseFloat(calcMargen.value) || 0;
+    var costoUsd = parseNum(calcCosto.value);
+    var tc = parseNum(calcTc.value);
+    var margen = parseNum(calcMargen.value);
     var costoGs = costoUsd * tc;
     var total = costoGs * (1 + margen/100);
     var ganancia = total - costoGs;
@@ -1331,6 +1354,15 @@
   var WA_TEMPLATE_LISTO = WA_TEMPLATE_LISTO_DEFAULT;
   try { WA_TEMPLATE_LISTO = localStorage.getItem(WA_TEMPLATE_LISTO_KEY) || WA_TEMPLATE_LISTO_DEFAULT; } catch(e){}
 
+  var DEFAULT_TC_KEY = 'dara_default_tc';
+  var DEFAULT_TC = 6000;
+  try { DEFAULT_TC = parseNum(localStorage.getItem(DEFAULT_TC_KEY)) || 6000; } catch(e){}
+  function applyDefaultTc(){
+    calcTc.value = DEFAULT_TC;
+    renderCalcOutput();
+  }
+  applyDefaultTc();
+
   function waMessageLlego(p){
     return WA_TEMPLATE_LLEGO
       .replace(/\(nombre\)/gi, p.cliente || '')
@@ -1476,12 +1508,21 @@
     document.getElementById('waTemplateInput').value = WA_TEMPLATE;
     document.getElementById('waTemplateLlegoInput').value = WA_TEMPLATE_LLEGO;
     document.getElementById('waTemplateListoInput').value = WA_TEMPLATE_LISTO;
+    document.getElementById('defaultTcInput').value = DEFAULT_TC;
     refreshPinSectionUI();
     setSyncStatus(SCRIPT_URL ? '' : 'pegá el link de tu Google Apps Script para empezar');
     dialog.showModal();
   });
   document.getElementById('syncDotBtn').addEventListener('click', function(){
     document.getElementById('openBackup').click();
+  });
+  document.getElementById('btnGuardarTc').addEventListener('click', function(){
+    var val = parseNum(document.getElementById('defaultTcInput').value);
+    if (!val) return;
+    DEFAULT_TC = val;
+    try { localStorage.setItem(DEFAULT_TC_KEY, String(DEFAULT_TC)); } catch(e){}
+    applyDefaultTc();
+    save();
   });
   document.getElementById('btnGuardarPlantilla').addEventListener('click', function(){
     var val = document.getElementById('waTemplateInput').value.trim();
