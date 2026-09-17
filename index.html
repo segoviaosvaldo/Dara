@@ -257,7 +257,7 @@
   .calc-row.total .val { color: var(--rose-deep); font-size: 18px; }
 
   .client-row {
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; justify-content: space-between; align-items: flex-start;
     padding: 13px 0; border-top: 1px solid var(--line); cursor: pointer;
   }
   .client-row:first-child { border-top: none; }
@@ -266,6 +266,14 @@
   .client-badge.clay { background: var(--clay-wash); color: var(--clay); }
   .client-badge.sage { background: var(--sage-wash); color: var(--sage); }
   .client-badge.neutral { background: var(--line); color: var(--ink-soft); }
+  .client-since { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+
+  .sort-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+  .sort-label { margin: 0; font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
+  #clientSort {
+    flex: 1; font-family: var(--font-sans); font-size: 13px; padding: 8px 10px;
+    border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  }
 
   .client-detail { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
   .back-link { background:none; border:none; color: var(--rose-deep); font-size: 14px; padding: 0 0 6px; cursor: pointer; font-family: var(--font-sans); }
@@ -383,7 +391,16 @@
       <label for="nuevaClienta">Agregar clienta</label>
       <input type="text" id="nuevaClienta" placeholder="Nombre de la clienta">
       <button class="btn-secondary" id="addClienta">Agregar</button>
-      <div style="margin-top: 16px;">
+      <div class="sort-row">
+        <label for="clientSort" class="sort-label">Ordenar por</label>
+        <select id="clientSort">
+          <option value="antiguo">Debe hace más tiempo</option>
+          <option value="reciente">Debe desde hace menos</option>
+          <option value="mayor">Mayor deuda</option>
+          <option value="menor">Menor deuda</option>
+        </select>
+      </div>
+      <div style="margin-top: 10px;">
         <div id="clientList"></div>
         <div class="empty-state" id="clientEmpty">Todavía no cargaste ninguna clienta.</div>
       </div>
@@ -815,24 +832,65 @@
     return c.movimientos.reduce(function(sum, m){ return sum + m.monto; }, 0);
   }
 
+  var CLIENT_SORT_KEY = 'dara_client_sort';
+  function getClientSort(){
+    try { return localStorage.getItem(CLIENT_SORT_KEY) || 'antiguo'; } catch(e){ return 'antiguo'; }
+  }
+  function setClientSort(v){
+    try { localStorage.setItem(CLIENT_SORT_KEY, v); } catch(e){}
+  }
+  function oldestChargeDate(c){
+    var fechas = c.movimientos.filter(function(m){ return m.monto > 0; }).map(function(m){ return m.fecha; });
+    if (!fechas.length) fechas = c.movimientos.map(function(m){ return m.fecha; });
+    if (!fechas.length) return null;
+    return fechas.reduce(function(min, f){ return (!min || f < min) ? f : min; }, null);
+  }
+
   function renderClientList(){
     var wrap = document.getElementById('clientList');
     var empty = document.getElementById('clientEmpty');
     wrap.innerHTML = '';
     if (state.clientas.length === 0){ empty.style.display = 'block'; return; }
     empty.style.display = 'none';
-    state.clientas.forEach(function(c){
-      var bal = clientBalance(c);
+
+    var mode = getClientSort();
+    var sortSel = document.getElementById('clientSort');
+    if (sortSel.value !== mode) sortSel.value = mode;
+
+    var withInfo = state.clientas.map(function(c){
+      return { c: c, bal: clientBalance(c), oldest: oldestChargeDate(c) };
+    });
+    withInfo.sort(function(a, b){
+      if (mode === 'mayor') return b.bal - a.bal;
+      if (mode === 'menor') return a.bal - b.bal;
+      var da = a.oldest || '9999-99-99', db = b.oldest || '9999-99-99';
+      if (mode === 'reciente') return db < da ? -1 : (db > da ? 1 : 0);
+      return da < db ? -1 : (da > db ? 1 : 0); // antiguo (default)
+    });
+
+    withInfo.forEach(function(item){
+      var c = item.c, bal = item.bal;
       var row = document.createElement('div'); row.className = 'client-row';
+      var left = document.createElement('div');
       var name = document.createElement('div'); name.className = 'client-name'; name.textContent = c.nombre;
+      left.appendChild(name);
+      if (item.oldest) {
+        var since = document.createElement('div'); since.className = 'client-since';
+        since.textContent = (bal > 0 ? 'debe desde ' : 'desde ') + fmtDate(item.oldest);
+        left.appendChild(since);
+      }
       var badge = document.createElement('div');
       badge.className = 'client-badge ' + (bal > 0 ? 'clay' : (bal < 0 ? 'sage' : 'neutral'));
       badge.textContent = bal > 0 ? ('debe ' + fmt(bal)) : (bal < 0 ? ('a favor ' + fmt(-bal)) : 'al día');
-      row.appendChild(name); row.appendChild(badge);
+      row.appendChild(left); row.appendChild(badge);
       row.addEventListener('click', function(){ openClient(c.id); });
       wrap.appendChild(row);
     });
   }
+  document.getElementById('clientSort').addEventListener('change', function(){
+    setClientSort(this.value);
+    renderClientList();
+  });
 
   document.getElementById('addClienta').addEventListener('click', function(){
     var input = document.getElementById('nuevaClienta');
@@ -954,7 +1012,16 @@
       var del = document.createElement('button'); del.className='del-btn'; del.innerHTML='&times;';
       del.addEventListener('click', function(){
         c.movimientos = c.movimientos.filter(function(x){ return x.id !== m.id; });
-        save(); renderClientDetail();
+        if (c.movimientos.length === 0) {
+          state.clientas = state.clientas.filter(function(x){ return x.id !== c.id; });
+          save();
+          activeClientId = null;
+          document.getElementById('clientDetailCard').style.display = 'none';
+          document.getElementById('clientesListCard').style.display = 'block';
+          renderClientList();
+        } else {
+          save(); renderClientDetail();
+        }
       });
       right.appendChild(amt); right.appendChild(bal2); right.appendChild(del);
       li.appendChild(left); li.appendChild(right);
@@ -1149,12 +1216,26 @@
   /* ---------- Init ---------- */
   (async function boot(){
     load();
-    if (SCRIPT_URL) { await syncLoad(); }
+    var isEmptyLocally = state.movimientos.length === 0 && state.clientas.length === 0 && state.precios.length === 0;
+    if (SCRIPT_URL && isEmptyLocally) { await syncLoad(); }
     renderSaldo();
     renderCalcHistory();
     renderClientList();
     initLock();
   })();
+
+  /* Si la app se va a segundo plano con una subida pendiente, la mandamos ya
+     (con sendBeacon, que sigue funcionando aunque se cierre la pestaña). */
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden && syncTimer && SCRIPT_URL) {
+      clearTimeout(syncTimer);
+      syncTimer = null;
+      try {
+        var blob = new Blob([JSON.stringify({ action: 'save', data: flattenForSync() })], { type: 'text/plain;charset=utf-8' });
+        navigator.sendBeacon(SCRIPT_URL, blob);
+      } catch(e){}
+    }
+  });
 })();
 </script>
 </body>
