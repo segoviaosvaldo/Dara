@@ -469,7 +469,10 @@
       <input type="number" id="pedPagoMonto" inputmode="numeric" placeholder="0">
       <label for="pedPagoFecha">Fecha</label>
       <input type="date" id="pedPagoFecha">
-      <button class="btn-secondary" id="pedAgregarPago">Marcar cobrado</button>
+      <div class="cfg-btn-row">
+        <button class="btn-secondary" id="pedAgregarPago">Cargar saldo</button>
+        <button class="btn-secondary" id="pedPagoRestante">Pago restante</button>
+      </div>
       <ul class="ledger" id="pedPagosList" style="margin-top:14px;"></ul>
       <div class="empty-state" id="pedPagosEmpty">Todavía no registraste pagos.</div>
 
@@ -1114,6 +1117,16 @@
     p.pagos.push({ id: uid(), fecha: fechaEl.value || todayStr(), monto: monto });
     save(); renderPedidoDetail();
     montoEl.value = '';
+  });
+
+  document.getElementById('pedPagoRestante').addEventListener('click', function(){
+    var p = state.pedidos.find(function(x){ return x.id === activePedidoId; });
+    if (!p) return;
+    var saldo = pedidoSaldo(p);
+    if (saldo <= 0) { alert('Este pedido ya está saldado.'); return; }
+    if (!p.pagos) p.pagos = [];
+    p.pagos.push({ id: uid(), fecha: document.getElementById('pedPagoFecha').value || todayStr(), monto: saldo });
+    save(); renderPedidoDetail();
   });
 
   document.getElementById('pedMarcarLlego').addEventListener('click', function(){
