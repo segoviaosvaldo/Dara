@@ -808,6 +808,7 @@
         }
       });
       renderSaldo(); renderPedidosList(); renderClientList();
+      refreshPedNumeroSuggestion();
       setSyncIndicator('ok');
       setSyncStatus(state.movimientos.length + ' movimientos, ' + state.clientas.length + ' clientas traídas ✓');
     } catch(err) {
@@ -1008,6 +1009,18 @@
     setPedSort(this.value);
     renderPedidosList();
   });
+
+  function refreshPedNumeroSuggestion(){
+    var el = document.getElementById('pedNumero');
+    if (document.activeElement === el || el.value.trim()) return;
+    var ultimo = state.pedidos.reduce(function(best, p){
+      return (!best || (p.numeroInterno || 0) > (best.numeroInterno || 0)) ? p : best;
+    }, null);
+    if (!ultimo) return;
+    var n = parseInt(ultimo.numero, 10);
+    if (isNaN(n)) return;
+    el.value = String(n + 1);
+  }
 
   function renderPedidosList(){
     var wrap = document.getElementById('pedidosList');
@@ -1227,6 +1240,7 @@
       document.getElementById(id).value = '';
     });
     renderCalcOutput();
+    refreshPedNumeroSuggestion();
   });
 
   /* ---------- Clientas ---------- */
@@ -1609,6 +1623,7 @@
       state.pedidos = parsed.pedidos || parsed.precios || [];
       save();
       renderSaldo(); renderPedidosList(); renderClientList();
+      refreshPedNumeroSuggestion();
       dialog.close();
     } catch(e){
       alert('No se pudo leer ese respaldo. Revisá que esté completo.');
@@ -1734,6 +1749,7 @@
     renderSaldo();
     renderPedidosList();
     renderClientList();
+    refreshPedNumeroSuggestion();
     initLock();
   })();
 
