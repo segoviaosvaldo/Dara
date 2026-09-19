@@ -1345,7 +1345,7 @@
         left.appendChild(sub);
       }
       var fechaSub = document.createElement('div'); fechaSub.className = 'client-since';
-      fechaSub.textContent = 'Pedido iniciado el ' + fmtDate(p.fecha);
+      fechaSub.textContent = fmtDate(p.fecha);
       left.appendChild(fechaSub);
       var badge = document.createElement('div');
       badge.className = 'client-badge ' + estadoClass(p.estado);
