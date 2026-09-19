@@ -400,6 +400,23 @@
   .form-row-2 > div { flex: 1; min-width: 0; }
   .tc-hint { font-weight: 400; font-size: 11px; color: var(--ink-soft); text-transform: none; letter-spacing: 0; }
 
+  .ped-item-header, .ped-item-row {
+    display: grid; grid-template-columns: 42px 74px 1fr 22px;
+    gap: 6px; align-items: center;
+  }
+  .ped-item-header {
+    margin-top: 12px; font-size: 10.5px; color: var(--ink-soft);
+    letter-spacing: 0.3px; padding: 0 1px;
+  }
+  .ped-item-row { margin-top: 7px; }
+  .ped-item-row input {
+    padding: 8px 7px; font-size: 14px; min-width: 0;
+  }
+  .ped-item-del {
+    background: none; border: none; color: var(--ink-soft);
+    font-size: 17px; line-height: 1; cursor: pointer; padding: 2px; justify-self: center;
+  }
+
   .splash-screen {
     position: fixed; inset: 0; z-index: 200;
     background: var(--bg);
@@ -470,8 +487,6 @@
       <datalist id="pedClienteList"></datalist>
       <label for="pedTelefono">WhatsApp de la clienta (opcional)</label>
       <input type="text" id="pedTelefono" placeholder="Ej: 0981123456" inputmode="tel">
-      <label for="pedDetalle">Detalle</label>
-      <input type="text" id="pedDetalle" placeholder="Ej: vestido + cartera">
       <div class="form-row-2">
         <div>
           <label for="pedNumero">Número de pedido</label>
@@ -482,8 +497,10 @@
           <input type="date" id="pedFecha">
         </div>
       </div>
-      <label for="calcCosto">Costo (USD) <span class="tc-hint">— cambio actual: <span id="calcCostoTcHint">Gs. 0</span>/USD</span></label>
-      <input type="text" id="calcCosto" inputmode="decimal" placeholder="0">
+      <label>Artículos <span class="tc-hint">— cambio actual: <span id="calcCostoTcHint">Gs. 0</span>/USD</span></label>
+      <div class="ped-item-header"><span>Unid.</span><span>Costo (USD)</span><span>Detalle</span><span></span></div>
+      <div id="pedItemsList"></div>
+      <button type="button" class="btn-secondary" id="pedAddItem" style="margin-top:8px;">+ Agregar línea</button>
       <input type="hidden" id="calcTc">
       <input type="hidden" id="calcMargen" value="70">
       <div class="calc-output">
@@ -767,7 +784,7 @@
 <script>
 (function(){
   var SCRIPT_URL_KEY = 'dara_script_url';
-  var DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwJQf0XzddkJPpf6Y-vwFgyUc2FVCrObWA5Iaz7Lhrw4mxdgXByuVqixKAzBPhZpIzX/exec';
+  var DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRSH-iIKef1gtGyclMj6OzHBFYpPPVrxX6p8wL4whdB40K0Aih34gSnBcE1C0oXpBnUw/exec';
   var SCRIPT_URL = DEFAULT_SCRIPT_URL;
   try { SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || DEFAULT_SCRIPT_URL; } catch(e){}
   var state = { movimientos: [], clientas: [], pedidos: [] };
@@ -804,14 +821,18 @@
       });
     });
     var pagosPedidos = [];
+    var pedidoItems = [];
     state.pedidos.forEach(function(p){
       (p.pagos || []).forEach(function(m){
         pagosPedidos.push({ id: m.id, pedidoId: p.id, fecha: m.fecha, monto: m.monto });
       });
+      (p.items || []).forEach(function(it){
+        pedidoItems.push({ id: it.id, pedidoId: p.id, unid: it.unid, costoUsd: it.costoUsd, detalle: it.detalle });
+      });
     });
     return {
       saldo: state.movimientos.map(function(m){
-        return { id: m.id, fecha: m.fecha, descripcion: m.desc, monto: m.monto };
+        return { id: m.id, fecha: m.fecha, descripcion: m.desc, monto: m.monto, liquidacion: !!m.liquidacion };
       }),
       clientas: state.clientas.map(function(c){ return { id: c.id, nombre: c.nombre, telefono: c.telefono || '' }; }),
       movClientas: movClientas,
@@ -825,6 +846,7 @@
         };
       }),
       pagosPedidos: pagosPedidos,
+      pedidoItems: pedidoItems,
       config: [
         { clave: 'waTemplate', valor: WA_TEMPLATE },
         { clave: 'waTemplateLlego', valor: WA_TEMPLATE_LLEGO },
@@ -878,7 +900,10 @@
         }
       });
       state.movimientos = (json.saldo || []).map(function(m){
-        return { id: m.id, fecha: m.fecha, desc: m.descripcion !== undefined ? m.descripcion : m.desc, monto: Number(m.monto) };
+        return {
+          id: m.id, fecha: m.fecha, desc: m.descripcion !== undefined ? m.descripcion : m.desc, monto: Number(m.monto),
+          liquidacion: (m.liquidacion === true || m.liquidacion === 'TRUE' || m.liquidacion === 'true')
+        };
       });
       state.clientas = Object.keys(clientesById).map(function(k){ return clientesById[k]; });
       var pedidosById = {};
@@ -895,12 +920,19 @@
           fechaLlego: p.fechaLlego || '',
           costoEnSaldo: (p.costoEnSaldo === true || p.costoEnSaldo === 'TRUE' || p.costoEnSaldo === 'true'),
           loteMovId: p.loteMovId || '',
-          pagos: []
+          pagos: [], items: []
         };
       });
       (json.pagosPedidos || []).forEach(function(m){
         if (pedidosById[m.pedidoId]) {
           pedidosById[m.pedidoId].pagos.push({ id: m.id, fecha: m.fecha, monto: Number(m.monto) });
+        }
+      });
+      (json.pedidoItems || []).forEach(function(it){
+        if (pedidosById[it.pedidoId]) {
+          pedidosById[it.pedidoId].items.push({
+            id: it.id, unid: Number(it.unid) || 0, costoUsd: Number(it.costoUsd) || 0, detalle: it.detalle || ''
+          });
         }
       });
       // Compatibilidad con planillas viejas que todavía no tenían PagosPedidos:
@@ -1020,8 +1052,9 @@
     segPlus.classList.toggle('selected', sign === 1);
     segMinus.classList.toggle('selected', sign === -1);
   }
-  segPlus.addEventListener('click', function(){ setSaldoSign(1); });
-  segMinus.addEventListener('click', function(){ setSaldoSign(-1); });
+  var saldoEsLiquidacion = false;
+  segPlus.addEventListener('click', function(){ setSaldoSign(1); saldoEsLiquidacion = false; });
+  segMinus.addEventListener('click', function(){ setSaldoSign(-1); saldoEsLiquidacion = false; });
   setSaldoSign(1);
   document.getElementById('saldoFecha').value = todayStr();
 
@@ -1052,20 +1085,22 @@
       var desc = document.createElement('div'); desc.className = 'entry-desc'; desc.textContent = m.desc || '(sin detalle)';
       var meta = document.createElement('div'); meta.className = 'entry-meta'; meta.textContent = fmtDate(m.fecha);
       left.appendChild(desc); left.appendChild(meta);
-      if (m.monto > 0) {
+      if (m.monto > 0 && !m.liquidacion) {
         var payBtn = document.createElement('button'); payBtn.className = 'pay-btn'; payBtn.textContent = 'Marcar pagado';
         payBtn.addEventListener('click', function(){
           setSaldoSign(-1);
+          saldoEsLiquidacion = true;
           document.getElementById('saldoDesc').value = 'Pago: ' + (m.desc || 'saldo');
           document.getElementById('saldoMonto').value = m.monto;
           document.getElementById('saldoFecha').value = todayStr();
           document.querySelector('#view-saldo .card').scrollIntoView({ behavior: 'smooth' });
         });
         left.appendChild(payBtn);
-      } else if (m.monto < 0) {
+      } else if (m.monto < 0 && !m.liquidacion) {
         var collectBtn = document.createElement('button'); collectBtn.className = 'collect-btn'; collectBtn.textContent = 'Marcar cobrado';
         collectBtn.addEventListener('click', function(){
           setSaldoSign(1);
+          saldoEsLiquidacion = true;
           document.getElementById('saldoDesc').value = 'Cobro: ' + (m.desc || 'saldo');
           document.getElementById('saldoMonto').value = Math.abs(m.monto);
           document.getElementById('saldoFecha').value = todayStr();
@@ -1101,7 +1136,8 @@
     var fechaEl = document.getElementById('saldoFecha');
     var monto = parseFloat(montoEl.value);
     if (!monto || monto <= 0) { montoEl.focus(); return; }
-    state.movimientos.push({ id: uid(), fecha: fechaEl.value || todayStr(), desc: descEl.value.trim(), monto: monto * saldoSign });
+    state.movimientos.push({ id: uid(), fecha: fechaEl.value || todayStr(), desc: descEl.value.trim(), monto: monto * saldoSign, liquidacion: saldoEsLiquidacion });
+    saldoEsLiquidacion = false;
     save(); renderSaldo();
     descEl.value = ''; montoEl.value = '';
   });
@@ -1192,7 +1228,6 @@
   });
 
   /* ---------- Pedidos ---------- */
-  var calcCosto = document.getElementById('calcCosto');
   var calcTc = document.getElementById('calcTc');
   var calcMargen = document.getElementById('calcMargen');
   document.getElementById('pedFecha').value = todayStr();
@@ -1213,8 +1248,80 @@
     return isNaN(n) ? 0 : n;
   }
 
+  /* ---------- Pedidos: líneas de artículos (Unid. / Costo USD / Detalle) ---------- */
+  var pedItemsList = document.getElementById('pedItemsList');
+
+  function crearPedItemRow(valores){
+    valores = valores || {};
+    var row = document.createElement('div'); row.className = 'ped-item-row';
+    var unid = document.createElement('input'); unid.type = 'text'; unid.inputMode = 'numeric';
+    unid.className = 'ped-item-unid'; unid.placeholder = '1'; unid.value = valores.unid || '1';
+    var costo = document.createElement('input'); costo.type = 'text'; costo.inputMode = 'decimal';
+    costo.className = 'ped-item-costo'; costo.placeholder = '0'; costo.value = valores.costoUsd || '';
+    var detalle = document.createElement('input'); detalle.type = 'text';
+    detalle.className = 'ped-item-detalle'; detalle.placeholder = 'Ej: blusa talle M'; detalle.value = valores.detalle || '';
+    var del = document.createElement('button'); del.type = 'button'; del.className = 'ped-item-del';
+    del.innerHTML = '&times;'; del.title = 'Quitar línea';
+    del.addEventListener('click', function(){
+      row.remove();
+      actualizarPedItemDelButtons();
+      renderCalcOutput();
+    });
+    [unid, costo].forEach(function(el){ el.addEventListener('input', renderCalcOutput); });
+    row.appendChild(unid); row.appendChild(costo); row.appendChild(detalle); row.appendChild(del);
+    pedItemsList.appendChild(row);
+    actualizarPedItemDelButtons();
+    return row;
+  }
+
+  function actualizarPedItemDelButtons(){
+    var rows = pedItemsList.querySelectorAll('.ped-item-row');
+    rows.forEach(function(row){
+      row.querySelector('.ped-item-del').style.visibility = rows.length > 1 ? 'visible' : 'hidden';
+    });
+  }
+
+  function resetPedItems(){
+    pedItemsList.innerHTML = '';
+    crearPedItemRow();
+    renderCalcOutput();
+  }
+
+  document.getElementById('pedAddItem').addEventListener('click', function(){
+    crearPedItemRow();
+    renderCalcOutput();
+  });
+
+  function leerPedItems(){
+    var items = [];
+    pedItemsList.querySelectorAll('.ped-item-row').forEach(function(row){
+      var unid = parseNum(row.querySelector('.ped-item-unid').value) || 0;
+      var costoUsd = parseNum(row.querySelector('.ped-item-costo').value) || 0;
+      var detalle = row.querySelector('.ped-item-detalle').value.trim();
+      if (unid > 0 && costoUsd > 0) {
+        items.push({ id: uid(), unid: unid, costoUsd: costoUsd, detalle: detalle });
+      }
+    });
+    return items;
+  }
+
+  function pedItemsTotalUsd(){
+    var total = 0;
+    leerPedItems().forEach(function(it){ total += it.unid * it.costoUsd; });
+    return total;
+  }
+
+  function composeDetalleFromItems(items){
+    return items.map(function(it){
+      var qty = it.unid > 1 ? (it.unid + 'x ') : '';
+      return qty + (it.detalle || '(sin detalle)');
+    }).join(', ');
+  }
+
+  crearPedItemRow();
+
   function currentCalc(){
-    var costoUsd = parseNum(calcCosto.value);
+    var costoUsd = pedItemsTotalUsd();
     var tc = parseNum(calcTc.value);
     var margen = parseNum(calcMargen.value);
     var costoGs = costoUsd * tc;
@@ -1233,7 +1340,7 @@
     var totalVal = parseNum(document.getElementById('outPrecio').value);
     document.getElementById('outGanancia').textContent = fmt(totalVal - c.costoGs);
   }
-  [calcCosto, calcTc, calcMargen].forEach(function(el){ el.addEventListener('input', renderCalcOutput); });
+  [calcTc, calcMargen].forEach(function(el){ el.addEventListener('input', renderCalcOutput); });
   document.getElementById('outPrecio').addEventListener('input', updateGananciaFromTotal);
   renderCalcOutput();
 
@@ -1541,8 +1648,13 @@
   });
 
   document.getElementById('savePedido').addEventListener('click', function(){
+    var items = leerPedItems();
+    if (items.length === 0) {
+      var firstCosto = pedItemsList.querySelector('.ped-item-costo');
+      if (firstCosto) firstCosto.focus();
+      return;
+    }
     var c = currentCalc();
-    if (!c.costoUsd){ calcCosto.focus(); return; }
     var clienteEl = document.getElementById('pedCliente');
     if (!clienteEl.value.trim()) { clienteEl.focus(); return; }
     var totalFinal = parseNum(document.getElementById('outPrecio').value) || c.total;
@@ -1555,16 +1667,17 @@
       cliente: clienteEl.value.trim(),
       telefono: document.getElementById('pedTelefono').value.trim(),
       numero: document.getElementById('pedNumero').value.trim(),
-      detalle: document.getElementById('pedDetalle').value.trim(),
+      detalle: composeDetalleFromItems(items),
+      items: items,
       costoUsd: c.costoUsd, tc: c.tc, margen: c.margen, costoGs: c.costoGs, ganancia: gananciaFinal, total: totalFinal,
       pagos: pagos, estado: 'pendiente'
     });
     save(); renderPedidosList();
-    ['pedCliente','pedTelefono','pedNumero','pedDetalle','calcCosto','pedEntregado'].forEach(function(id){
+    ['pedCliente','pedTelefono','pedNumero','pedEntregado'].forEach(function(id){
       document.getElementById(id).value = '';
     });
     document.getElementById('pedFecha').value = todayStr();
-    renderCalcOutput();
+    resetPedItems();
     refreshPedNumeroSuggestion();
   });
 
