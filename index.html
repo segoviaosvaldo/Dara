@@ -76,7 +76,7 @@
     border-bottom: 1px solid var(--line);
   }
   header.top .wrap { padding: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-  header.top .wordmark {
+  .wordmark {
     font-family: var(--font-serif);
     font-weight: 500;
     font-size: 32px;
@@ -84,7 +84,7 @@
     color: var(--rose-deep);
     line-height: 1;
   }
-  header.top .sub-boutique {
+  .sub-boutique {
     font-family: var(--font-serif);
     font-style: italic;
     font-size: 11px;
@@ -386,9 +386,29 @@
   .lote-row .lote-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   .lote-row .lote-monto { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-size: 13px; }
   .lote-row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--rose-deep); }
+
+  .form-row-2 { display: flex; gap: 10px; margin-top: 12px; }
+  .form-row-2 > div { flex: 1; min-width: 0; }
+  .tc-hint { font-weight: 400; font-size: 11px; color: var(--ink-soft); text-transform: none; letter-spacing: 0; }
+
+  .splash-screen {
+    position: fixed; inset: 0; z-index: 200;
+    background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 0.4s ease;
+  }
+  .splash-screen .wordmark, .splash-screen .sub-boutique { text-align: center; }
+  .splash-screen .wordmark { font-size: 68px; letter-spacing: 3px; }
+  .splash-screen .sub-boutique { font-size: 15px; letter-spacing: 8px; margin-top: 12px; }
+  .splash-screen.hide { opacity: 0; pointer-events: none; }
 </style>
 </head>
 <body>
+
+<div id="splashScreen" class="splash-screen">
+  <div class="wordmark">DARA</div>
+  <div class="sub-boutique">Boutique</div>
+</div>
 
 <div id="appRoot" style="display:none;">
 <header class="top">
@@ -441,19 +461,22 @@
       <datalist id="pedClienteList"></datalist>
       <label for="pedTelefono">WhatsApp de la clienta (opcional)</label>
       <input type="text" id="pedTelefono" placeholder="Ej: 0981123456" inputmode="tel">
-      <label for="pedNumero">Número de pedido</label>
-      <input type="text" id="pedNumero" placeholder="Ej: 123456">
       <label for="pedDetalle">Detalle</label>
       <input type="text" id="pedDetalle" placeholder="Ej: vestido + cartera">
-      <label for="pedFecha">Fecha del pedido</label>
-      <input type="date" id="pedFecha">
-      <label for="calcCosto">Costo (USD)</label>
+      <div class="form-row-2">
+        <div>
+          <label for="pedNumero">Número de pedido</label>
+          <input type="text" id="pedNumero" placeholder="Ej: 123456">
+        </div>
+        <div>
+          <label for="pedFecha">Fecha del pedido</label>
+          <input type="date" id="pedFecha">
+        </div>
+      </div>
+      <label for="calcCosto">Costo (USD) <span class="tc-hint">— cambio actual: <span id="calcCostoTcHint">Gs. 0</span>/USD</span></label>
       <input type="text" id="calcCosto" inputmode="decimal" placeholder="0">
-      <label for="calcTc">Tipo de cambio (Gs. por USD)</label>
-      <input type="text" id="calcTc" inputmode="decimal">
-      <a href="https://www.google.com/search?q=cotizacion+dolar+guarani+hoy" target="_blank" rel="noopener" class="rate-link">Ver cotización de hoy ↗</a>
-      <label for="calcMargen">Margen (%)</label>
-      <input type="number" id="calcMargen" inputmode="numeric" value="70">
+      <input type="hidden" id="calcTc">
+      <input type="hidden" id="calcMargen" value="70">
       <div class="calc-output">
         <div class="calc-row"><span>Costo en guaraníes</span><span class="val" id="outCostoGs">Gs. 0</span></div>
         <div class="calc-row"><span>Ganancia</span><span class="val" id="outGanancia">Gs. 0</span></div>
@@ -640,7 +663,12 @@
       <p class="note">Se usa como valor inicial del tipo de cambio cada vez que abrís "Nuevo pedido", para no tener que buscarlo de nuevo cada vez.</p>
       <label for="defaultTcInput">Tipo de cambio guardado (Gs. por USD)</label>
       <input type="text" id="defaultTcInput" inputmode="decimal">
-      <button class="btn-secondary" id="btnGuardarTc">Guardar</button>
+      <a href="https://www.google.com/search?q=cotizacion+dolar+guarani+hoy" target="_blank" rel="noopener" class="rate-link">Ver cotización de hoy ↗</a>
+      <button class="btn-secondary" id="btnGuardarTc" style="margin-top:10px;">Guardar</button>
+
+      <label for="defaultMargenInput" style="margin-top:18px;">Margen guardado por defecto (%)</label>
+      <input type="text" id="defaultMargenInput" inputmode="decimal">
+      <button class="btn-secondary" id="btnGuardarMargen">Guardar</button>
     </div>
 
     <div class="cfg-section">
@@ -793,6 +821,7 @@
         { clave: 'waTemplateLlego', valor: WA_TEMPLATE_LLEGO },
         { clave: 'waTemplateListo', valor: WA_TEMPLATE_LISTO },
         { clave: 'tipoCambioDefault', valor: String(DEFAULT_TC) },
+        { clave: 'margenDefault', valor: String(DEFAULT_MARGEN) },
         { clave: 'alertDays', valor: String(ALERT_DAYS) },
         { clave: 'pinHash', valor: getStoredPinHash() }
       ]
@@ -897,6 +926,11 @@
           DEFAULT_TC = parseNum(row.valor) || DEFAULT_TC;
           try { localStorage.setItem(DEFAULT_TC_KEY, String(DEFAULT_TC)); } catch(e){}
           applyDefaultTc();
+        }
+        if (row.clave === 'margenDefault' && row.valor) {
+          DEFAULT_MARGEN = parseNum(row.valor) || DEFAULT_MARGEN;
+          try { localStorage.setItem(DEFAULT_MARGEN_KEY, String(DEFAULT_MARGEN)); } catch(e){}
+          applyDefaultMargen();
         }
         if (row.clave === 'alertDays' && row.valor) {
           ALERT_DAYS = parseInt(row.valor, 10) || ALERT_DAYS_DEFAULT;
@@ -1702,9 +1736,20 @@
   try { DEFAULT_TC = parseNum(localStorage.getItem(DEFAULT_TC_KEY)) || 6000; } catch(e){}
   function applyDefaultTc(){
     calcTc.value = DEFAULT_TC;
+    var hint = document.getElementById('calcCostoTcHint');
+    if (hint) hint.textContent = fmt(DEFAULT_TC);
+    renderCalcOutput();
+  }
+
+  var DEFAULT_MARGEN_KEY = 'dara_default_margen';
+  var DEFAULT_MARGEN = 70;
+  try { DEFAULT_MARGEN = parseNum(localStorage.getItem(DEFAULT_MARGEN_KEY)) || 70; } catch(e){}
+  function applyDefaultMargen(){
+    calcMargen.value = DEFAULT_MARGEN;
     renderCalcOutput();
   }
   applyDefaultTc();
+  applyDefaultMargen();
 
   function waMessageLlego(p){
     return WA_TEMPLATE_LLEGO
@@ -1854,6 +1899,7 @@
     document.getElementById('waTemplateLlegoInput').value = WA_TEMPLATE_LLEGO;
     document.getElementById('waTemplateListoInput').value = WA_TEMPLATE_LISTO;
     document.getElementById('defaultTcInput').value = DEFAULT_TC;
+    document.getElementById('defaultMargenInput').value = DEFAULT_MARGEN;
     document.getElementById('alertDaysInput').value = ALERT_DAYS;
     refreshPinSectionUI();
     setSyncStatus(SCRIPT_URL ? '' : 'pegá el link de tu Google Apps Script para empezar');
@@ -1868,6 +1914,14 @@
     DEFAULT_TC = val;
     try { localStorage.setItem(DEFAULT_TC_KEY, String(DEFAULT_TC)); } catch(e){}
     applyDefaultTc();
+    save();
+  });
+  document.getElementById('btnGuardarMargen').addEventListener('click', function(){
+    var val = parseNum(document.getElementById('defaultMargenInput').value);
+    if (!val && val !== 0) return;
+    DEFAULT_MARGEN = val;
+    try { localStorage.setItem(DEFAULT_MARGEN_KEY, String(DEFAULT_MARGEN)); } catch(e){}
+    applyDefaultMargen();
     save();
   });
   document.getElementById('btnGuardarAlertDays').addEventListener('click', function(){
@@ -2071,6 +2125,14 @@
     refreshPedNumeroSuggestion();
     initLock();
   })();
+
+  /* Pantalla de bienvenida: muestra el logo un segundo al abrir la app y desaparece sola. */
+  setTimeout(function(){
+    var splash = document.getElementById('splashScreen');
+    if (!splash) return;
+    splash.classList.add('hide');
+    setTimeout(function(){ splash.remove(); }, 450);
+  }, 1000);
 
   /* Si la app se va a segundo plano con un guardado en curso, lo reforzamos
      con sendBeacon, que sigue funcionando aunque se cierre la pestaña. */
