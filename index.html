@@ -340,16 +340,52 @@
     background: var(--bg-elevated); color: var(--ink);
   }
   dialog#backupDialog::backdrop { background: rgba(0,0,0,0.4); }
-  dialog#backupDialog .dwrap { padding: 22px; }
-  dialog#backupDialog h3 { font-family: var(--font-serif); margin: 0 0 4px; }
+  dialog#backupDialog .dwrap { padding: 22px; position: relative; }
+  dialog#backupDialog h3 { font-family: var(--font-serif); margin: 0 4px 4px 0; padding-right: 22px; }
   dialog#backupDialog p.note { font-size: 13px; color: var(--ink-soft); margin: 0 0 10px; }
-  dialog#backupDialog .close-x { float: right; background:none; border:none; font-size: 20px; color: var(--ink-soft); cursor:pointer; }
+  .close-x {
+    position: absolute; top: 14px; right: 14px;
+    width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+    background: none; border: none; border-radius: 50%;
+    font-size: 15px; line-height: 1; color: var(--ink-soft); opacity: 0.55; cursor: pointer;
+  }
+  .close-x:active { opacity: 1; background: var(--line); }
   .cfg-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
   .cfg-section:first-of-type { border-top: none; margin-top: 10px; padding-top: 0; }
   .cfg-subhead { font-family: var(--font-serif); font-weight: 600; font-size: 15px; margin-bottom: 6px; }
   .cfg-btn-row { display: flex; gap: 8px; margin-top: 4px; }
   .cfg-btn-row .btn-secondary { margin-top: 0; }
   .sync-status { font-size: 12px; color: var(--ink-soft); margin: 8px 0 0; min-height: 14px; }
+
+  dialog#confirmDialog {
+    border: none; border-radius: 18px; padding: 0; width: min(340px, 90vw);
+    background: var(--bg-elevated); color: var(--ink);
+  }
+  dialog#confirmDialog::backdrop { background: rgba(0,0,0,0.4); }
+  dialog#confirmDialog .dwrap { padding: 22px; position: relative; }
+  dialog#confirmDialog h3 { font-family: var(--font-serif); margin: 0 22px 10px 0; font-size: 17px; }
+  dialog#confirmDialog p.note { margin: 0 0 18px; }
+  .tag-pedidos {
+    font-size: 10.5px; padding: 2px 7px; border-radius: 20px;
+    background: var(--clay-wash); color: var(--clay); font-weight: 600; flex-shrink: 0;
+  }
+
+  dialog#loteDialog {
+    border: none; border-radius: 18px; padding: 0; width: min(440px, 92vw);
+    background: var(--bg-elevated); color: var(--ink); max-height: 86vh;
+  }
+  dialog#loteDialog::backdrop { background: rgba(0,0,0,0.4); }
+  dialog#loteDialog .dwrap { padding: 22px; position: relative; max-height: 86vh; overflow-y: auto; }
+  dialog#loteDialog h3 { font-family: var(--font-serif); margin: 0 22px 4px 0; }
+  dialog#loteDialog p.note { font-size: 13px; color: var(--ink-soft); margin: 0 0 10px; }
+  .lote-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; cursor: pointer;
+  }
+  .lote-row:first-child { border-top: none; }
+  .lote-row .lote-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .lote-row .lote-monto { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-size: 13px; }
+  .lote-row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--rose-deep); }
 </style>
 </head>
 <body>
@@ -387,6 +423,7 @@
       <label for="saldoFecha">Fecha</label>
       <input type="date" id="saldoFecha">
       <button class="btn-primary" id="addSaldo">Agregar movimiento</button>
+      <button class="btn-secondary" id="btnAbrirLote">Cargar compras de tarjeta</button>
     </section>
 
     <section class="card">
@@ -408,6 +445,8 @@
       <input type="text" id="pedNumero" placeholder="Ej: 123456">
       <label for="pedDetalle">Detalle</label>
       <input type="text" id="pedDetalle" placeholder="Ej: vestido + cartera">
+      <label for="pedFecha">Fecha del pedido</label>
+      <input type="date" id="pedFecha">
       <label for="calcCosto">Costo (USD)</label>
       <input type="text" id="calcCosto" inputmode="decimal" placeholder="0">
       <label for="calcTc">Tipo de cambio (Gs. por USD)</label>
@@ -459,6 +498,11 @@
       <div class="ped-estado-row">
         <span class="client-badge" id="pedDetEstadoBadge">Pendiente</span>
       </div>
+      <p class="ped-sub" id="pedDetLoteNote" style="display:none;"></p>
+      <div id="pedDetFechaLlegoRow" style="display:none;">
+        <label for="pedDetFechaLlego">Fecha en que llegó</label>
+        <input type="date" id="pedDetFechaLlego">
+      </div>
 
       <div class="calc-output">
         <div class="calc-row"><span>Total</span><span class="val" id="pedDetTotal">Gs. 0</span></div>
@@ -474,6 +518,7 @@
 
       <button class="btn-secondary" id="pedMarcarLlego" style="margin-top:16px;">Marcar como llegado</button>
       <button class="btn-primary" id="pedMarcarRetirado" style="display:none;">Marcar como retirado</button>
+      <button class="btn-secondary" id="pedVolverPendiente" style="display:none;">Volver a pendiente</button>
       <button class="btn-secondary" id="pedReabrir" style="display:none;">Reabrir pedido</button>
 
       <h2 class="section-title" style="margin-top:22px;">Historial de pagos</h2>
@@ -599,6 +644,14 @@
     </div>
 
     <div class="cfg-section">
+      <div class="cfg-subhead">2b) Clientas</div>
+      <p class="note">Si un pedido ya llegó y la clienta no terminó de pagar en este tiempo, aparece automáticamente como deudora dentro de "Clientas" (con la etiqueta "Pedidos"), hasta que se salde.</p>
+      <label for="alertDaysInput">Avisar como deudora después de (días)</label>
+      <input type="number" id="alertDaysInput" inputmode="numeric">
+      <button class="btn-secondary" id="btnGuardarAlertDays">Guardar</button>
+    </div>
+
+    <div class="cfg-section">
       <div class="cfg-subhead">3) Mensajes de WhatsApp</div>
       <p class="note">Recordatorio de saldo (ficha de clienta). Podés usar (nombre), (monto) y (motivo).</p>
       <label for="waTemplateInput">Mensaje de recordatorio</label>
@@ -639,6 +692,38 @@
       <textarea id="backupIn" placeholder="Pegá acá el respaldo guardado"></textarea>
       <button class="btn-primary" id="restoreBackup">Restaurar</button>
     </div>
+  </div>
+</dialog>
+
+<dialog id="confirmDialog">
+  <div class="dwrap">
+    <button class="close-x" id="confirmClose">&times;</button>
+    <h3 id="confirmTitle">¿Confirmás?</h3>
+    <p class="note" id="confirmMsg"></p>
+    <button class="btn-secondary" id="confirmCancel">Cancelar</button>
+    <button class="btn-delete" id="confirmOk">Eliminar</button>
+  </div>
+</dialog>
+
+<dialog id="loteDialog">
+  <div class="dwrap">
+    <button class="close-x" id="loteClose">&times;</button>
+    <h3>Compras con tarjeta</h3>
+    <div id="loteList"></div>
+    <div class="empty-state" id="loteEmpty" style="display:none;">No hay pedidos pendientes de cargar a Saldo.</div>
+    <div class="calc-output">
+      <div class="calc-row"><span>Subtotal pedidos</span><span class="val" id="loteSubtotal">Gs. 0</span></div>
+    </div>
+    <label for="loteExtra">Extra (mercadería adicional para la boutique, opcional)</label>
+    <input type="number" id="loteExtra" inputmode="numeric" placeholder="0">
+    <div class="calc-output">
+      <div class="calc-row total"><span>Total del movimiento</span><span class="val" id="loteTotal">Gs. 0</span></div>
+    </div>
+    <label for="loteDesc">Descripción (podés editarla)</label>
+    <input type="text" id="loteDesc" placeholder="Ej: Pago tarjeta Shein: #01, #02">
+    <label for="loteFecha">Fecha</label>
+    <input type="date" id="loteFecha">
+    <button class="btn-primary" id="loteGuardar">Generar movimiento en Saldo</button>
   </div>
 </dialog>
 
@@ -698,7 +783,8 @@
           id: p.id, fecha: p.fecha, numeroInterno: p.numeroInterno, numero: p.numero,
           cliente: p.cliente, telefono: p.telefono || '', detalle: p.detalle,
           costoUsd: p.costoUsd, tipoCambio: p.tc, margen: p.margen, costoGs: p.costoGs,
-          ganancia: p.ganancia, total: p.total, entregado: pedidoEntregado(p), estado: p.estado
+          ganancia: p.ganancia, total: p.total, entregado: pedidoEntregado(p), estado: p.estado,
+          fechaLlego: p.fechaLlego || '', costoEnSaldo: !!p.costoEnSaldo, loteMovId: p.loteMovId || ''
         };
       }),
       pagosPedidos: pagosPedidos,
@@ -707,6 +793,7 @@
         { clave: 'waTemplateLlego', valor: WA_TEMPLATE_LLEGO },
         { clave: 'waTemplateListo', valor: WA_TEMPLATE_LISTO },
         { clave: 'tipoCambioDefault', valor: String(DEFAULT_TC) },
+        { clave: 'alertDays', valor: String(ALERT_DAYS) },
         { clave: 'pinHash', valor: getStoredPinHash() }
       ]
     };
@@ -767,6 +854,9 @@
           ganancia: Number(p.ganancia) || 0,
           total: Number(p.total !== undefined ? p.total : p.precioVenta),
           estado: p.estado || 'pendiente',
+          fechaLlego: p.fechaLlego || '',
+          costoEnSaldo: (p.costoEnSaldo === true || p.costoEnSaldo === 'TRUE' || p.costoEnSaldo === 'true'),
+          loteMovId: p.loteMovId || '',
           pagos: []
         };
       });
@@ -782,6 +872,11 @@
         var legacyEntregado = Number((json.pedidos || []).find(function(x){ return x.id === p.id; }).entregado) || 0;
         if (p.pagos.length === 0 && legacyEntregado > 0) {
           p.pagos.push({ id: uid(), fecha: p.fecha, monto: legacyEntregado });
+        }
+        // Compatibilidad: pedidos marcados "llegó" antes de que existiera fechaLlego
+        // usan la fecha del pedido como aproximación, para que la alerta funcione.
+        if (!p.fechaLlego && (p.estado === 'llego' || p.estado === 'retirado')) {
+          p.fechaLlego = p.fecha;
         }
       });
       state.pedidos = Object.keys(pedidosById).map(function(k){ return pedidosById[k]; });
@@ -802,6 +897,10 @@
           DEFAULT_TC = parseNum(row.valor) || DEFAULT_TC;
           try { localStorage.setItem(DEFAULT_TC_KEY, String(DEFAULT_TC)); } catch(e){}
           applyDefaultTc();
+        }
+        if (row.clave === 'alertDays' && row.valor) {
+          ALERT_DAYS = parseInt(row.valor, 10) || ALERT_DAYS_DEFAULT;
+          try { localStorage.setItem(ALERT_DAYS_KEY, String(ALERT_DAYS)); } catch(e){}
         }
         if (row.clave === 'pinHash' && row.valor) {
           try { localStorage.setItem(PIN_HASH_KEY, row.valor); } catch(e){}
@@ -841,7 +940,32 @@
       btn.classList.add('active');
       views.forEach(function(v){ v.classList.remove('active'); });
       document.getElementById('view-' + btn.dataset.view).classList.add('active');
+      // Las alertas de pedidos vencidos dentro de Clientas son un reflejo en vivo:
+      // recalculamos al entrar a la pestaña para que nunca quede desactualizada.
+      if (btn.dataset.view === 'clientas') renderClientList();
     });
+  });
+
+  /* ---------- Confirmación (borrar / acciones sensibles) ---------- */
+  var confirmDialog = document.getElementById('confirmDialog');
+  var confirmOkHandler = null;
+  function askConfirm(message, onConfirm, okLabel){
+    document.getElementById('confirmMsg').textContent = message;
+    document.getElementById('confirmOk').textContent = okLabel || 'Eliminar';
+    confirmOkHandler = onConfirm;
+    confirmDialog.showModal();
+  }
+  document.getElementById('confirmOk').addEventListener('click', function(){
+    var fn = confirmOkHandler;
+    confirmDialog.close();
+    confirmOkHandler = null;
+    if (fn) fn();
+  });
+  document.getElementById('confirmCancel').addEventListener('click', function(){
+    confirmDialog.close(); confirmOkHandler = null;
+  });
+  document.getElementById('confirmClose').addEventListener('click', function(){
+    confirmDialog.close(); confirmOkHandler = null;
   });
 
   /* ---------- Saldo Dara-Romi ---------- */
@@ -913,8 +1037,13 @@
       bal.textContent = item.bal >= 0 ? ('Dara debe ' + fmt(item.bal)) : ('Romi debe ' + fmt(-item.bal));
       var del = document.createElement('button'); del.className='del-btn'; del.innerHTML='&times;'; del.title='Eliminar';
       del.addEventListener('click', function(){
-        state.movimientos = state.movimientos.filter(function(x){ return x.id !== m.id; });
-        save(); renderSaldo();
+        askConfirm('¿Eliminar este movimiento de Saldo?', function(){
+          state.movimientos = state.movimientos.filter(function(x){ return x.id !== m.id; });
+          state.pedidos.forEach(function(p){
+            if (p.loteMovId === m.id) { p.costoEnSaldo = false; p.loteMovId = ''; }
+          });
+          save(); renderSaldo();
+        });
       });
       right.appendChild(amt); right.appendChild(bal); right.appendChild(del);
 
@@ -934,10 +1063,96 @@
     descEl.value = ''; montoEl.value = '';
   });
 
+  /* ---------- Pago de tarjeta por lote (varios pedidos + extra) ---------- */
+  var loteDialog = document.getElementById('loteDialog');
+  var loteSeleccion = {};
+
+  function pedidosDisponiblesParaLote(){
+    return state.pedidos
+      .filter(function(p){ return !p.costoEnSaldo; })
+      .sort(function(a, b){ return (a.fecha || '') < (b.fecha || '') ? -1 : 1; });
+  }
+
+  function renderLoteList(){
+    var wrap = document.getElementById('loteList');
+    var empty = document.getElementById('loteEmpty');
+    wrap.innerHTML = '';
+    var pedidos = pedidosDisponiblesParaLote();
+    empty.style.display = pedidos.length === 0 ? 'block' : 'none';
+    pedidos.forEach(function(p){
+      var row = document.createElement('label'); row.className = 'lote-row';
+      var left = document.createElement('span');
+      left.textContent = '#' + String(p.numeroInterno || 0).padStart(2, '0') + ' – ' + (p.cliente || 'Sin nombre');
+      var right = document.createElement('span'); right.className = 'lote-right';
+      var monto = document.createElement('span'); monto.className = 'lote-monto'; monto.textContent = fmt(p.costoGs);
+      var chk = document.createElement('input'); chk.type = 'checkbox';
+      chk.checked = !!loteSeleccion[p.id];
+      chk.addEventListener('change', function(){
+        if (chk.checked) loteSeleccion[p.id] = true; else delete loteSeleccion[p.id];
+        updateLoteTotales();
+      });
+      right.appendChild(monto); right.appendChild(chk);
+      row.appendChild(left); row.appendChild(right);
+      wrap.appendChild(row);
+    });
+  }
+
+  var loteDescEditada = false;
+  function buildLoteDescDefault(seleccionados, extra){
+    var nombres = seleccionados.map(function(p){ return '#' + String(p.numeroInterno || 0).padStart(2, '0'); });
+    var desc = 'Pago tarjeta Shein';
+    if (nombres.length) desc += ': ' + nombres.join(', ');
+    if (extra > 0) desc += (nombres.length ? ' + ' : ': ') + fmt(extra) + ' extra mercadería';
+    return desc;
+  }
+
+  function updateLoteTotales(){
+    var subtotal = 0;
+    var seleccionados = state.pedidos.filter(function(p){ return loteSeleccion[p.id]; });
+    seleccionados.forEach(function(p){ subtotal += (p.costoGs || 0); });
+    var extra = parseFloat(document.getElementById('loteExtra').value) || 0;
+    document.getElementById('loteSubtotal').textContent = fmt(subtotal);
+    document.getElementById('loteTotal').textContent = fmt(subtotal + extra);
+    if (!loteDescEditada) {
+      document.getElementById('loteDesc').value = buildLoteDescDefault(seleccionados, extra);
+    }
+  }
+  document.getElementById('loteExtra').addEventListener('input', updateLoteTotales);
+  document.getElementById('loteDesc').addEventListener('input', function(){ loteDescEditada = true; });
+
+  document.getElementById('btnAbrirLote').addEventListener('click', function(){
+    loteSeleccion = {};
+    loteDescEditada = false;
+    document.getElementById('loteExtra').value = '';
+    document.getElementById('loteDesc').value = '';
+    document.getElementById('loteFecha').value = todayStr();
+    renderLoteList();
+    updateLoteTotales();
+    loteDialog.showModal();
+  });
+  document.getElementById('loteClose').addEventListener('click', function(){ loteDialog.close(); });
+
+  document.getElementById('loteGuardar').addEventListener('click', function(){
+    var seleccionados = state.pedidos.filter(function(p){ return loteSeleccion[p.id]; });
+    var extra = parseFloat(document.getElementById('loteExtra').value) || 0;
+    var subtotal = seleccionados.reduce(function(sum, p){ return sum + (p.costoGs || 0); }, 0);
+    var total = subtotal + extra;
+    if (total <= 0) return;
+    var fecha = document.getElementById('loteFecha').value || todayStr();
+    var movId = uid();
+    var desc = document.getElementById('loteDesc').value.trim() || buildLoteDescDefault(seleccionados, extra);
+    state.movimientos.push({ id: movId, fecha: fecha, desc: desc, monto: total });
+    seleccionados.forEach(function(p){ p.costoEnSaldo = true; p.loteMovId = movId; });
+    save();
+    renderSaldo();
+    loteDialog.close();
+  });
+
   /* ---------- Pedidos ---------- */
   var calcCosto = document.getElementById('calcCosto');
   var calcTc = document.getElementById('calcTc');
   var calcMargen = document.getElementById('calcMargen');
+  document.getElementById('pedFecha').value = todayStr();
   var activePedidoId = null;
   var pedidosListMode = 'pendientes';
   var PED_SORT_KEY = 'dara_ped_sort';
@@ -981,6 +1196,28 @@
 
   function pedidoEntregado(p){ return (p.pagos || []).reduce(function(sum, m){ return sum + m.monto; }, 0); }
   function pedidoSaldo(p){ return p.total - pedidoEntregado(p); }
+
+  var ALERT_DAYS_KEY = 'dara_alert_days';
+  var ALERT_DAYS_DEFAULT = 7;
+  var ALERT_DAYS = ALERT_DAYS_DEFAULT;
+  try { ALERT_DAYS = parseInt(localStorage.getItem(ALERT_DAYS_KEY), 10) || ALERT_DAYS_DEFAULT; } catch(e){}
+
+  function pedidoEnAlerta(p){
+    if (p.estado !== 'llego') return false;
+    if (pedidoSaldo(p) <= 0) return false;
+    if (!p.fechaLlego) return false;
+    var dias = (Date.now() - new Date(p.fechaLlego + 'T00:00:00').getTime()) / 86400000;
+    return dias >= ALERT_DAYS;
+  }
+
+  function pedidoPagado(p){
+    return (p.total || 0) > 0 && pedidoSaldo(p) <= 0;
+  }
+
+  function ultimoPagoFecha(p){
+    if (!p.pagos || !p.pagos.length) return null;
+    return p.pagos.reduce(function(max, m){ return (!max || m.fecha > max) ? m.fecha : max; }, null);
+  }
 
   function estadoLabel(estado){
     return estado === 'llego' ? 'Llegó' : (estado === 'retirado' ? 'Retirado' : 'Pendiente');
@@ -1064,6 +1301,9 @@
         var sub = document.createElement('div'); sub.className = 'client-since'; sub.textContent = p.detalle;
         left.appendChild(sub);
       }
+      var fechaSub = document.createElement('div'); fechaSub.className = 'client-since';
+      fechaSub.textContent = 'Pedido iniciado el ' + fmtDate(p.fecha);
+      left.appendChild(fechaSub);
       var badge = document.createElement('div');
       badge.className = 'client-badge ' + estadoClass(p.estado);
       badge.textContent = p.estado === 'retirado' ? 'Retirado'
@@ -1102,6 +1342,20 @@
     var badge = document.getElementById('pedDetEstadoBadge');
     badge.className = 'client-badge ' + estadoClass(p.estado);
     badge.textContent = estadoLabel(p.estado);
+    var loteNote = document.getElementById('pedDetLoteNote');
+    if (p.costoEnSaldo) {
+      loteNote.style.display = 'block';
+      loteNote.textContent = 'Costo (' + fmt(p.costoGs) + ') ya cargado a Saldo como pago de tarjeta ✓';
+    } else {
+      loteNote.style.display = 'none';
+    }
+    var fechaLlegoRow = document.getElementById('pedDetFechaLlegoRow');
+    if (p.estado === 'llego' || p.estado === 'retirado') {
+      fechaLlegoRow.style.display = 'block';
+      document.getElementById('pedDetFechaLlego').value = p.fechaLlego || '';
+    } else {
+      fechaLlegoRow.style.display = 'none';
+    }
     document.getElementById('pedDetTotal').textContent = fmt(p.total);
     document.getElementById('pedDetEntregado').textContent = fmt(entregado);
     document.getElementById('pedDetSaldo').textContent = fmt(Math.max(saldo, 0));
@@ -1110,6 +1364,7 @@
 
     document.getElementById('pedMarcarLlego').style.display = p.estado === 'pendiente' ? 'block' : 'none';
     document.getElementById('pedMarcarRetirado').style.display = p.estado === 'llego' ? 'block' : 'none';
+    document.getElementById('pedVolverPendiente').style.display = p.estado === 'llego' ? 'block' : 'none';
     document.getElementById('pedReabrir').style.display = p.estado === 'retirado' ? 'block' : 'none';
 
     document.getElementById('pedPagoFecha').value = todayStr();
@@ -1129,8 +1384,10 @@
         var amt = document.createElement('div'); amt.className = 'entry-amount plus'; amt.textContent = '+' + fmt(pago.monto).replace('Gs. ','');
         var del = document.createElement('button'); del.className = 'del-btn'; del.innerHTML = '&times;';
         del.addEventListener('click', function(){
-          p.pagos = p.pagos.filter(function(x){ return x.id !== pago.id; });
-          save(); renderPedidoDetail();
+          askConfirm('¿Eliminar este pago?', function(){
+            p.pagos = p.pagos.filter(function(x){ return x.id !== pago.id; });
+            save(); renderPedidoDetail();
+          });
         });
         right.appendChild(amt); right.appendChild(del);
         li.appendChild(left); li.appendChild(right);
@@ -1157,6 +1414,14 @@
     p.telefono = this.value;
     updatePedWaButton(p);
     save();
+  });
+
+  document.getElementById('pedDetFechaLlego').addEventListener('change', function(){
+    var p = state.pedidos.find(function(x){ return x.id === activePedidoId; });
+    if (!p) return;
+    p.fechaLlego = this.value || '';
+    save();
+    renderClientList();
   });
 
   document.getElementById('pedAgregarPago').addEventListener('click', function(){
@@ -1186,27 +1451,43 @@
     var p = state.pedidos.find(function(x){ return x.id === activePedidoId; });
     if (!p) return;
     p.estado = 'llego';
+    if (!p.fechaLlego) p.fechaLlego = todayStr();
     save(); renderPedidoDetail();
   });
   document.getElementById('pedMarcarRetirado').addEventListener('click', function(){
     var p = state.pedidos.find(function(x){ return x.id === activePedidoId; });
     if (!p) return;
     var saldo = pedidoSaldo(p);
-    if (saldo > 0 && !confirm('Todavía falta pagar ' + fmt(saldo) + '. ¿Marcar como retirado igual?')) return;
-    p.estado = 'retirado';
+    function doMarcarRetirado(){
+      p.estado = 'retirado';
+      save(); renderPedidoDetail();
+    }
+    if (saldo > 0) {
+      askConfirm('Todavía falta pagar ' + fmt(saldo) + '. ¿Marcar como retirado igual?', doMarcarRetirado, 'Marcar retirado');
+    } else {
+      doMarcarRetirado();
+    }
+  });
+  document.getElementById('pedVolverPendiente').addEventListener('click', function(){
+    var p = state.pedidos.find(function(x){ return x.id === activePedidoId; });
+    if (!p) return;
+    p.estado = 'pendiente';
+    p.fechaLlego = '';
     save(); renderPedidoDetail();
   });
   document.getElementById('pedReabrir').addEventListener('click', function(){
     var p = state.pedidos.find(function(x){ return x.id === activePedidoId; });
     if (!p) return;
     p.estado = 'llego';
+    if (!p.fechaLlego) p.fechaLlego = todayStr();
     save(); renderPedidoDetail();
   });
   document.getElementById('pedEliminar').addEventListener('click', function(){
-    if (!confirm('¿Eliminar este pedido? No se puede deshacer.')) return;
-    state.pedidos = state.pedidos.filter(function(x){ return x.id !== activePedidoId; });
-    save();
-    closePedidoDetail();
+    askConfirm('¿Eliminar este pedido? No se puede deshacer.', function(){
+      state.pedidos = state.pedidos.filter(function(x){ return x.id !== activePedidoId; });
+      save();
+      closePedidoDetail();
+    }, 'Eliminar pedido');
   });
 
   document.getElementById('pedCliente').addEventListener('input', function(){
@@ -1224,7 +1505,7 @@
     var totalFinal = parseNum(document.getElementById('outPrecio').value) || c.total;
     var gananciaFinal = totalFinal - c.costoGs;
     var entregadoVal = parseFloat(document.getElementById('pedEntregado').value) || 0;
-    var fecha = todayStr();
+    var fecha = document.getElementById('pedFecha').value || todayStr();
     var pagos = entregadoVal > 0 ? [{ id: uid(), fecha: fecha, monto: entregadoVal }] : [];
     state.pedidos.push({
       id: uid(), fecha: fecha, numeroInterno: nextNumeroInterno(),
@@ -1239,6 +1520,7 @@
     ['pedCliente','pedTelefono','pedNumero','pedDetalle','calcCosto','pedEntregado'].forEach(function(id){
       document.getElementById(id).value = '';
     });
+    document.getElementById('pedFecha').value = todayStr();
     renderCalcOutput();
     refreshPedNumeroSuggestion();
   });
@@ -1306,8 +1588,18 @@
     if (sortSel.value !== mode) sortSel.value = mode;
 
     var withInfo = state.clientas
-      .map(function(c){ return { c: c, bal: clientBalance(c), oldest: oldestChargeDate(c) }; })
+      .map(function(c){ return { kind: 'clienta', id: c.id, nombre: c.nombre, bal: clientBalance(c), oldest: oldestChargeDate(c) }; })
       .filter(function(item){ return clientListMode === 'pendientes' ? item.bal > 0 : item.bal <= 0; });
+
+    if (clientListMode === 'pendientes') {
+      state.pedidos.filter(pedidoEnAlerta).forEach(function(p){
+        withInfo.push({ kind: 'pedido', id: p.id, nombre: p.cliente || 'Sin nombre', bal: pedidoSaldo(p), oldest: p.fechaLlego });
+      });
+    } else {
+      state.pedidos.filter(pedidoPagado).forEach(function(p){
+        withInfo.push({ kind: 'pedido', id: p.id, nombre: p.cliente || 'Sin nombre', bal: pedidoSaldo(p), oldest: ultimoPagoFecha(p) || p.fecha });
+      });
+    }
 
     if (withInfo.length === 0){
       empty.style.display = 'block';
@@ -1327,11 +1619,17 @@
     });
 
     withInfo.forEach(function(item){
-      var c = item.c, bal = item.bal;
+      var bal = item.bal;
       var row = document.createElement('div'); row.className = 'client-row';
       var left = document.createElement('div');
-      var name = document.createElement('div'); name.className = 'client-name'; name.textContent = c.nombre;
-      left.appendChild(name);
+      var nameRow = document.createElement('div'); nameRow.style.display = 'flex'; nameRow.style.alignItems = 'center'; nameRow.style.gap = '6px';
+      var name = document.createElement('div'); name.className = 'client-name'; name.textContent = item.nombre;
+      nameRow.appendChild(name);
+      if (item.kind === 'pedido') {
+        var tag = document.createElement('span'); tag.className = 'tag-pedidos'; tag.textContent = 'Pedidos';
+        nameRow.appendChild(tag);
+      }
+      left.appendChild(nameRow);
       if (item.oldest) {
         var since = document.createElement('div'); since.className = 'client-since';
         since.textContent = (bal > 0 ? 'debe desde ' : 'desde ') + fmtDate(item.oldest);
@@ -1341,7 +1639,17 @@
       badge.className = 'client-badge ' + (bal > 0 ? 'clay' : (bal < 0 ? 'sage' : 'neutral'));
       badge.textContent = bal > 0 ? ('debe ' + fmt(bal)) : (bal < 0 ? ('a favor ' + fmt(-bal)) : 'al día');
       row.appendChild(left); row.appendChild(badge);
-      row.addEventListener('click', function(){ openClient(c.id); });
+      row.addEventListener('click', function(){
+        if (item.kind === 'pedido') {
+          tabButtons.forEach(function(b){ b.classList.remove('active'); });
+          document.querySelector('#tabbar button[data-view="precios"]').classList.add('active');
+          views.forEach(function(v){ v.classList.remove('active'); });
+          document.getElementById('view-precios').classList.add('active');
+          openPedido(item.id);
+        } else {
+          openClient(item.id);
+        }
+      });
       wrap.appendChild(row);
     });
   }
@@ -1504,17 +1812,19 @@
       bal2.textContent = item.bal >= 0 ? ('debe ' + fmt(item.bal)) : ('a favor ' + fmt(-item.bal));
       var del = document.createElement('button'); del.className='del-btn'; del.innerHTML='&times;';
       del.addEventListener('click', function(){
-        c.movimientos = c.movimientos.filter(function(x){ return x.id !== m.id; });
-        if (c.movimientos.length === 0) {
-          state.clientas = state.clientas.filter(function(x){ return x.id !== c.id; });
-          save();
-          activeClientId = null;
-          document.getElementById('clientDetailCard').style.display = 'none';
-          document.getElementById('clientesListCard').style.display = 'block';
-          renderClientList();
-        } else {
-          save(); renderClientDetail();
-        }
+        askConfirm('¿Eliminar esta transacción?', function(){
+          c.movimientos = c.movimientos.filter(function(x){ return x.id !== m.id; });
+          if (c.movimientos.length === 0) {
+            state.clientas = state.clientas.filter(function(x){ return x.id !== c.id; });
+            save();
+            activeClientId = null;
+            document.getElementById('clientDetailCard').style.display = 'none';
+            document.getElementById('clientesListCard').style.display = 'block';
+            renderClientList();
+          } else {
+            save(); renderClientDetail();
+          }
+        });
       });
       right.appendChild(amt); right.appendChild(bal2); right.appendChild(del);
       li.appendChild(left); li.appendChild(right);
@@ -1544,6 +1854,7 @@
     document.getElementById('waTemplateLlegoInput').value = WA_TEMPLATE_LLEGO;
     document.getElementById('waTemplateListoInput').value = WA_TEMPLATE_LISTO;
     document.getElementById('defaultTcInput').value = DEFAULT_TC;
+    document.getElementById('alertDaysInput').value = ALERT_DAYS;
     refreshPinSectionUI();
     setSyncStatus(SCRIPT_URL ? '' : 'pegá el link de tu Google Apps Script para empezar');
     dialog.showModal();
@@ -1558,6 +1869,14 @@
     try { localStorage.setItem(DEFAULT_TC_KEY, String(DEFAULT_TC)); } catch(e){}
     applyDefaultTc();
     save();
+  });
+  document.getElementById('btnGuardarAlertDays').addEventListener('click', function(){
+    var val = parseInt(document.getElementById('alertDaysInput').value, 10);
+    if (!val || val <= 0) return;
+    ALERT_DAYS = val;
+    try { localStorage.setItem(ALERT_DAYS_KEY, String(ALERT_DAYS)); } catch(e){}
+    save();
+    renderClientList();
   });
   document.getElementById('btnGuardarPlantilla').addEventListener('click', function(){
     var val = document.getElementById('waTemplateInput').value.trim();
