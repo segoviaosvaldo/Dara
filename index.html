@@ -427,6 +427,12 @@
   .splash-screen .wordmark { font-size: 68px; letter-spacing: 3px; }
   .splash-screen .sub-boutique { font-size: 15px; letter-spacing: 8px; margin-top: 12px; }
   .splash-screen.hide { opacity: 0; pointer-events: none; }
+
+  .eye-toggle-btn {
+    background: none; border: none; color: var(--ink-soft); cursor: pointer;
+    padding: 6px 5px; line-height: 1; display: flex; align-items: center;
+  }
+  .eye-toggle-btn.active { color: var(--rose-deep); }
 </style>
 </head>
 <body>
@@ -445,6 +451,12 @@
     </div>
     <div class="headnote">
       <button class="sync-dot-btn" id="syncDotBtn" title="Sin conectar todavía" aria-label="Estado de sincronización"><span class="sync-dot idle" id="syncDot"></span></button>
+      <button class="eye-toggle-btn" id="toggleAmounts" title="Ocultar montos" aria-label="Ocultar montos">
+        <svg id="eyeIcon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </button>
       <button class="settings-link" id="openBackup" title="Configuración" aria-label="Configuración">⚙</button>
     </div>
   </div>
@@ -992,9 +1004,17 @@
     }
   }
 
-  function fmt(n){
+  var AMOUNTS_HIDDEN_KEY = 'dara_amounts_hidden';
+  var AMOUNTS_HIDDEN = false;
+  try { AMOUNTS_HIDDEN = localStorage.getItem(AMOUNTS_HIDDEN_KEY) === '1'; } catch(e){}
+
+  function fmtReal(n){
     n = Math.round(n || 0);
     return 'Gs. ' + n.toLocaleString('es-PY');
+  }
+  function fmt(n){
+    if (AMOUNTS_HIDDEN) return 'Gs. ••••••';
+    return fmtReal(n);
   }
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -1042,6 +1062,38 @@
   document.getElementById('confirmClose').addEventListener('click', function(){
     confirmDialog.close(); confirmOkHandler = null;
   });
+
+  /* ---------- Ocultar montos (privacidad al compartir capturas) ---------- */
+  function updateEyeIcon(){
+    var btn = document.getElementById('toggleAmounts');
+    var icon = document.getElementById('eyeIcon');
+    if (!btn || !icon) return;
+    btn.classList.toggle('active', AMOUNTS_HIDDEN);
+    btn.title = AMOUNTS_HIDDEN ? 'Mostrar montos' : 'Ocultar montos';
+    if (AMOUNTS_HIDDEN) {
+      icon.innerHTML = '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.6 21.6 0 0 1 5.06-5.94"></path>'
+        + '<path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.6 21.6 0 0 1-2.16 3.19"></path>'
+        + '<path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>'
+        + '<line x1="1" y1="1" x2="23" y2="23"></line>';
+    } else {
+      icon.innerHTML = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle>';
+    }
+  }
+  function refreshAllViews(){
+    renderSaldo();
+    renderPedidosList();
+    renderClientList();
+    renderCalcOutput();
+    if (activePedidoId) renderPedidoDetail();
+    if (activeClientId) renderClientDetail();
+  }
+  document.getElementById('toggleAmounts').addEventListener('click', function(){
+    AMOUNTS_HIDDEN = !AMOUNTS_HIDDEN;
+    try { localStorage.setItem(AMOUNTS_HIDDEN_KEY, AMOUNTS_HIDDEN ? '1' : '0'); } catch(e){}
+    updateEyeIcon();
+    refreshAllViews();
+  });
+  updateEyeIcon();
 
   /* ---------- Saldo Dara-Romi ---------- */
   var saldoSign = 1;
@@ -1181,7 +1233,7 @@
     var nombres = seleccionados.map(function(p){ return '#' + String(p.numeroInterno || 0).padStart(2, '0'); });
     var desc = 'Pago tarjeta Shein';
     if (nombres.length) desc += ': ' + nombres.join(', ');
-    if (extra > 0) desc += (nombres.length ? ' + ' : ': ') + fmt(extra) + ' extra mercadería';
+    if (extra > 0) desc += (nombres.length ? ' + ' : ': ') + fmtReal(extra) + ' extra mercadería';
     return desc;
   }
 
@@ -1859,7 +1911,7 @@
   function applyDefaultTc(){
     calcTc.value = DEFAULT_TC;
     var hint = document.getElementById('calcCostoTcHint');
-    if (hint) hint.textContent = fmt(DEFAULT_TC);
+    if (hint) hint.textContent = fmtReal(DEFAULT_TC);
     renderCalcOutput();
   }
 
@@ -1877,14 +1929,14 @@
     return WA_TEMPLATE_LLEGO
       .replace(/\(nombre\)/gi, p.cliente || '')
       .replace(/\(detalle\)/gi, p.detalle || 'tu pedido')
-      .replace(/\(saldo\)/gi, fmt(Math.max(pedidoSaldo(p), 0)))
-      .replace(/\(total\)/gi, fmt(p.total));
+      .replace(/\(saldo\)/gi, fmtReal(Math.max(pedidoSaldo(p), 0)))
+      .replace(/\(total\)/gi, fmtReal(p.total));
   }
   function waMessageListo(p){
     return WA_TEMPLATE_LISTO
       .replace(/\(nombre\)/gi, p.cliente || '')
       .replace(/\(detalle\)/gi, p.detalle || 'tu pedido')
-      .replace(/\(total\)/gi, fmt(p.total));
+      .replace(/\(total\)/gi, fmtReal(p.total));
   }
 
   function waNumber(raw){
@@ -1901,7 +1953,7 @@
       if (m.monto > 0 && m.motivo && motivos.indexOf(m.motivo) === -1) motivos.push(m.motivo);
     });
     var motivoTxt = motivos.length ? motivos.join(', ') : 'tu pedido';
-    var montoTxt = fmt(Math.abs(bal));
+    var montoTxt = fmtReal(Math.abs(bal));
     return WA_TEMPLATE
       .replace(/\(nombre\)/gi, c.nombre)
       .replace(/\(monto\)/gi, montoTxt)
