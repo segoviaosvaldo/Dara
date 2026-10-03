@@ -297,6 +297,23 @@
   .client-badge.clay { background: var(--clay-wash); color: var(--clay); }
   .client-badge.sage { background: var(--sage-wash); color: var(--sage); }
   .client-badge.neutral { background: var(--line); color: var(--ink-soft); }
+  button.client-badge { border: none; cursor: pointer; font-family: var(--font-sans); }
+  .amount.rose { color: var(--rose-deep); }
+  .search-wrap { position: relative; margin-top: 14px; }
+  .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--ink-soft); pointer-events: none; }
+  .search-wrap input { padding-left: 34px; margin: 0; }
+  .chevron-btn {
+    background: none; border: none; color: var(--ink-soft); cursor: pointer;
+    padding: 2px; display: flex; align-items: center; flex-shrink: 0;
+    transition: transform .2s ease;
+  }
+  .chevron-btn.open { transform: rotate(180deg); }
+  .venta-desglose { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); max-width: 220px; }
+  .venta-desglose .calc-row { font-size: 13.5px; padding: 4px 0; }
+  .warn-btn {
+    background: none; border: none; padding: 2px; cursor: pointer;
+    display: flex; align-items: center; color: #D6A52B;
+  }
   .client-since { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
   .ped-sub { font-size: 13.5px; color: var(--ink-soft); margin: 2px 0; }
   .ped-estado-row { margin: 14px 0 4px; }
@@ -608,6 +625,10 @@
         <button type="button" class="subtab active" id="clientTabPendientes">Pendientes</button>
         <button type="button" class="subtab" id="clientTabCobrados">Cobrados</button>
       </div>
+      <div class="search-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="clientSearch" placeholder="Buscar clienta">
+      </div>
       <div class="sort-row">
         <label for="clientSort" class="sort-label">Ordenar por</label>
         <select id="clientSort">
@@ -656,6 +677,94 @@
     </section>
   </section>
 
+  <section id="view-ventas" class="view">
+    <section class="card" id="ventaFormCard">
+      <h2 class="section-title" id="ventaFormTitle">Nueva venta</h2>
+      <label for="vtaCliente">Clienta (opcional)</label>
+      <input type="text" id="vtaCliente" placeholder="Nombre de la clienta" list="pedClienteList" autocomplete="off">
+      <label for="vtaFecha">Fecha</label>
+      <input type="date" id="vtaFecha">
+      <label>Productos</label>
+      <div class="ped-item-header"><span>Unid.</span><span>Precio (Gs.)</span><span>Detalle</span><span></span></div>
+      <div id="vtaItemsList"></div>
+      <button type="button" class="btn-secondary" id="vtaAddItem" style="margin-top:8px;">+ Agregar línea</button>
+      <div class="calc-output">
+        <div class="calc-row total">
+          <span>Total de la venta</span>
+          <span class="total-edit">Gs. <input type="text" inputmode="decimal" id="vtaTotalOut"></span>
+        </div>
+      </div>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:16px;">
+        <input type="checkbox" id="vtaFacturado" style="width:18px; height:18px; margin:0; accent-color: var(--rose-deep);">
+        <span style="font-size:13.5px; color: var(--ink);">A facturar</span>
+      </label>
+      <div id="vtaFacturaExtra" style="display:none;">
+        <label for="vtaNumeroFacturaInput">Nº de factura <span class="tc-hint">— tocá para modificarlo</span></label>
+        <input type="text" id="vtaNumeroFacturaInput" placeholder="001-001-0000001">
+        <label for="vtaRuc">RUC a facturar (opcional)</label>
+        <input type="text" id="vtaRuc" placeholder="Ej: 80012345-6">
+        <label for="vtaTelefono">Teléfono de la clienta (opcional)</label>
+        <input type="text" id="vtaTelefono" inputmode="tel" placeholder="Ej: 0981123456">
+        <label for="vtaEmail">Email de la clienta (opcional)</label>
+        <input type="text" id="vtaEmail" placeholder="Ej: cliente@correo.com">
+      </div>
+      <button class="btn-primary" id="saveVenta">Guardar venta</button>
+      <button class="btn-secondary" id="cancelEditVenta" style="display:none;">Cancelar edición</button>
+    </section>
+
+    <section class="card" id="ventasListCard">
+      <div class="balance-figure">
+        <div class="who">Vendido en <span id="ventaMesActualLabel"></span></div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" id="ventaDesgloseToggle" class="chevron-btn" aria-label="Ver desglose facturado / sin facturar" title="Ver desglose">
+            <svg id="ventaChevronIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="amount rose" id="ventaTotalMesAmount">Gs. 0</div>
+        </div>
+        <div id="ventaDesglose" class="venta-desglose" style="display:none;">
+          <div class="calc-row">
+            <span>Facturadas</span>
+            <span style="display:flex; align-items:center; gap:6px;">
+              <button type="button" id="ventaWarnBtn" class="warn-btn" style="display:none;" title="¡Hay ventas pendientes de facturación!" aria-label="Aviso: hay ventas pendientes de facturación">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1 21h22L12 2Zm0 6.5c.55 0 1 .45 1 1v5a1 1 0 0 1-2 0v-5c0-.55.45-1 1-1ZM12 18a1.25 1.25 0 1 1 0-2.5A1.25 1.25 0 0 1 12 18Z"/></svg>
+              </button>
+              <span class="val" id="ventaTotalFacturadas">Gs. 0</span>
+            </span>
+          </div>
+          <div class="calc-row"><span>Sin facturar</span><span class="val" id="ventaTotalSinFacturar">Gs. 0</span></div>
+        </div>
+      </div>
+
+      <h2 class="section-title">Ventas</h2>
+      <div class="subtabs">
+        <button type="button" class="subtab active" id="ventaFiltroMesBtn">Este mes</button>
+        <button type="button" class="subtab" id="ventaFiltroTodosBtn">Todos</button>
+      </div>
+      <div class="sort-row" id="ventaMesNavRow">
+        <button class="btn-secondary" id="ventaMesPrev" style="width:auto; margin:0; padding:8px 14px;">‹</button>
+        <div class="sort-label" id="ventaMesNavLabel" style="flex:1; text-align:center; font-size:13.5px; color: var(--ink);"></div>
+        <button class="btn-secondary" id="ventaMesNext" style="width:auto; margin:0; padding:8px 14px;">›</button>
+      </div>
+      <div class="search-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="ventaSearch" placeholder="Buscar por clienta o detalle">
+      </div>
+      <div class="sort-row">
+        <label for="ventaSort" class="sort-label">Ordenar por</label>
+        <select id="ventaSort">
+          <option value="reciente">Más reciente</option>
+          <option value="antiguo">Más antiguo</option>
+          <option value="mayor">Mayor monto</option>
+          <option value="menor">Menor monto</option>
+        </select>
+      </div>
+      <div style="margin-top: 10px;">
+        <div id="ventasList"></div>
+        <div class="empty-state" id="ventasEmpty">Todavía no cargaste ninguna venta.</div>
+      </div>
+    </section>
+  </section>
+
 </main>
 
 <nav id="tabbar">
@@ -663,6 +772,7 @@
     <button data-view="saldo" class="active"><span class="dot"></span>Saldo</button>
     <button data-view="precios"><span class="dot"></span>Pedidos</button>
     <button data-view="clientas"><span class="dot"></span>Clientas</button>
+    <button data-view="ventas"><span class="dot"></span>Ventas</button>
   </div>
 </nav>
 </div>
@@ -715,6 +825,14 @@
       <label for="alertDaysInput">Avisar como deudora después de (días)</label>
       <input type="number" id="alertDaysInput" inputmode="numeric">
       <button class="btn-secondary" id="btnGuardarAlertDays">Guardar</button>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-subhead">2c) Ventas</div>
+      <p class="note">Cuando marques una venta como facturada por primera vez, se usa este número. Las siguientes facturas se numeran solas, siempre a partir de la última que marcaste.</p>
+      <label for="facturaInicioInput">Número de factura inicial</label>
+      <input type="text" id="facturaInicioInput" placeholder="001-001-0000001">
+      <button class="btn-secondary" id="btnGuardarFacturaInicio">Guardar</button>
     </div>
 
     <div class="cfg-section">
@@ -796,10 +914,10 @@
 <script>
 (function(){
   var SCRIPT_URL_KEY = 'dara_script_url';
-  var DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRSH-iIKef1gtGyclMj6OzHBFYpPPVrxX6p8wL4whdB40K0Aih34gSnBcE1C0oXpBnUw/exec';
+  var DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby2NW5JWEPxR1VdB2m3ijIhHAxYm4N09lh53cP-hSFCJWH6_oTq1xpI_QgoWw91ZHqr/exec';
   var SCRIPT_URL = DEFAULT_SCRIPT_URL;
   try { SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || DEFAULT_SCRIPT_URL; } catch(e){}
-  var state = { movimientos: [], clientas: [], pedidos: [] };
+  var state = { movimientos: [], clientas: [], pedidos: [], ventas: [] };
   var pendingSave = false;
 
   function save(){
@@ -842,6 +960,12 @@
         pedidoItems.push({ id: it.id, pedidoId: p.id, unid: it.unid, costoUsd: it.costoUsd, detalle: it.detalle });
       });
     });
+    var ventaItems = [];
+    state.ventas.forEach(function(v){
+      (v.items || []).forEach(function(it){
+        ventaItems.push({ id: it.id, ventaId: v.id, unid: it.unid, monto: it.monto, detalle: it.detalle });
+      });
+    });
     return {
       saldo: state.movimientos.map(function(m){
         return { id: m.id, fecha: m.fecha, descripcion: m.desc, monto: m.monto, liquidacion: !!m.liquidacion };
@@ -859,6 +983,15 @@
       }),
       pagosPedidos: pagosPedidos,
       pedidoItems: pedidoItems,
+      ventas: state.ventas.map(function(v){
+        return {
+          id: v.id, fecha: v.fecha, numeroInterno: v.numeroInterno, cliente: v.cliente || '',
+          detalle: v.detalle || '', monto: v.monto, aFacturar: !!v.aFacturar, facturado: !!v.facturado,
+          numeroFactura: v.numeroFactura || '', telefono: v.telefono || '', email: v.email || '',
+          ruc: v.ruc || ''
+        };
+      }),
+      ventaItems: ventaItems,
       config: [
         { clave: 'waTemplate', valor: WA_TEMPLATE },
         { clave: 'waTemplateLlego', valor: WA_TEMPLATE_LLEGO },
@@ -866,6 +999,7 @@
         { clave: 'tipoCambioDefault', valor: String(DEFAULT_TC) },
         { clave: 'margenDefault', valor: String(DEFAULT_MARGEN) },
         { clave: 'alertDays', valor: String(ALERT_DAYS) },
+        { clave: 'facturaInicio', valor: DEFAULT_FACTURA_INICIO },
         { clave: 'pinHash', valor: getStoredPinHash() }
       ]
     };
@@ -962,6 +1096,29 @@
         }
       });
       state.pedidos = Object.keys(pedidosById).map(function(k){ return pedidosById[k]; });
+      var ventasById = {};
+      (json.ventas || []).forEach(function(v){
+        var facturadoBool = (v.facturado === true || v.facturado === 'TRUE' || v.facturado === 'true');
+        // Compatibilidad: ventas cargadas antes de que existiera "aFacturar" — si ya estaba
+        // facturada o tenía número reservado, es obvio que sí correspondía facturarla.
+        var aFacturarBool = (v.aFacturar === true || v.aFacturar === 'TRUE' || v.aFacturar === 'true')
+          || facturadoBool || !!v.numeroFactura;
+        ventasById[v.id] = {
+          id: v.id, fecha: v.fecha, numeroInterno: Number(v.numeroInterno) || 0,
+          cliente: v.cliente || '', detalle: v.detalle || '', monto: Number(v.monto) || 0,
+          aFacturar: aFacturarBool, facturado: facturadoBool,
+          numeroFactura: v.numeroFactura || '', telefono: v.telefono || '', email: v.email || '',
+          ruc: v.ruc || '', items: []
+        };
+      });
+      (json.ventaItems || []).forEach(function(it){
+        if (ventasById[it.ventaId]) {
+          ventasById[it.ventaId].items.push({
+            id: it.id, unid: Number(it.unid) || 0, monto: Number(it.monto) || 0, detalle: it.detalle || ''
+          });
+        }
+      });
+      state.ventas = Object.keys(ventasById).map(function(k){ return ventasById[k]; });
       (json.config || []).forEach(function(row){
         if (row.clave === 'waTemplate' && row.valor) {
           WA_TEMPLATE = row.valor;
@@ -989,11 +1146,16 @@
           ALERT_DAYS = parseInt(row.valor, 10) || ALERT_DAYS_DEFAULT;
           try { localStorage.setItem(ALERT_DAYS_KEY, String(ALERT_DAYS)); } catch(e){}
         }
+        if (row.clave === 'facturaInicio' && row.valor) {
+          DEFAULT_FACTURA_INICIO = row.valor;
+          try { localStorage.setItem(DEFAULT_FACTURA_INICIO_KEY, DEFAULT_FACTURA_INICIO); } catch(e){}
+        }
         if (row.clave === 'pinHash' && row.valor) {
           try { localStorage.setItem(PIN_HASH_KEY, row.valor); } catch(e){}
         }
       });
       renderSaldo(); renderPedidosList(); renderClientList();
+      renderVentasList(); renderVentaTotalMes();
       refreshPedNumeroSuggestion();
       setSyncIndicator('ok');
       setSyncStatus(state.movimientos.length + ' movimientos, ' + state.clientas.length + ' clientas traídas ✓');
@@ -1038,6 +1200,7 @@
       // Las alertas de pedidos vencidos dentro de Clientas son un reflejo en vivo:
       // recalculamos al entrar a la pestaña para que nunca quede desactualizada.
       if (btn.dataset.view === 'clientas') renderClientList();
+      if (btn.dataset.view === 'ventas') { renderVentasList(); renderVentaTotalMes(); }
     });
   });
 
@@ -1084,6 +1247,8 @@
     renderPedidosList();
     renderClientList();
     renderCalcOutput();
+    renderVentasList();
+    renderVentaTotalMes();
     if (activePedidoId) renderPedidoDetail();
     if (activeClientId) renderClientDetail();
   }
@@ -1780,6 +1945,12 @@
     renderClientList();
   });
 
+  var clientSearchQ = '';
+  document.getElementById('clientSearch').addEventListener('input', function(){
+    clientSearchQ = this.value.trim().toLowerCase();
+    renderClientList();
+  });
+
   function renderClientList(){
     var pedList = document.getElementById('pedClienteList');
     if (pedList) {
@@ -1809,11 +1980,15 @@
       });
     }
 
+    if (clientSearchQ) {
+      withInfo = withInfo.filter(function(item){ return (item.nombre || '').toLowerCase().indexOf(clientSearchQ) !== -1; });
+    }
+
     if (withInfo.length === 0){
       empty.style.display = 'block';
-      empty.textContent = clientListMode === 'pendientes'
-        ? 'No hay clientas con saldo pendiente.'
-        : 'Todavía no hay clientas cobradas.';
+      empty.textContent = clientSearchQ
+        ? 'No se encontraron clientas con esa búsqueda.'
+        : (clientListMode === 'pendientes' ? 'No hay clientas con saldo pendiente.' : 'Todavía no hay clientas cobradas.');
       return;
     }
     empty.style.display = 'none';
@@ -1924,6 +2099,10 @@
   }
   applyDefaultTc();
   applyDefaultMargen();
+
+  var DEFAULT_FACTURA_INICIO_KEY = 'dara_factura_inicio';
+  var DEFAULT_FACTURA_INICIO = '001-001-0000001';
+  try { DEFAULT_FACTURA_INICIO = localStorage.getItem(DEFAULT_FACTURA_INICIO_KEY) || DEFAULT_FACTURA_INICIO; } catch(e){}
 
   function waMessageLlego(p){
     return WA_TEMPLATE_LLEGO
@@ -2064,6 +2243,390 @@
     motivoEl.value = ''; montoEl.value = '';
   });
 
+  /* ---------- Ventas ---------- */
+  var MESES_NOMBRES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  function ventaMesLabel(d){ return MESES_NOMBRES[d.getMonth()] + ' ' + d.getFullYear(); }
+
+  document.getElementById('vtaFecha').value = todayStr();
+  var vtaItemsListEl = document.getElementById('vtaItemsList');
+  var activeVentaEditId = null;
+
+  function crearVtaItemRow(valores){
+    valores = valores || {};
+    var row = document.createElement('div'); row.className = 'ped-item-row';
+    var unid = document.createElement('input'); unid.type = 'text'; unid.inputMode = 'numeric';
+    unid.className = 'vta-item-unid'; unid.placeholder = '1'; unid.value = valores.unid || '1';
+    var monto = document.createElement('input'); monto.type = 'text'; monto.inputMode = 'numeric';
+    monto.className = 'vta-item-monto'; monto.placeholder = '0'; monto.value = valores.monto || '';
+    var detalle = document.createElement('input'); detalle.type = 'text';
+    detalle.className = 'vta-item-detalle'; detalle.placeholder = 'Ej: remera talle M'; detalle.value = valores.detalle || '';
+    var del = document.createElement('button'); del.type = 'button'; del.className = 'ped-item-del';
+    del.innerHTML = '&times;'; del.title = 'Quitar línea';
+    del.addEventListener('click', function(){
+      row.remove();
+      actualizarVtaItemDelButtons();
+      renderVtaTotal();
+    });
+    [unid, monto].forEach(function(el){ el.addEventListener('input', renderVtaTotal); });
+    row.appendChild(unid); row.appendChild(monto); row.appendChild(detalle); row.appendChild(del);
+    vtaItemsListEl.appendChild(row);
+    actualizarVtaItemDelButtons();
+    return row;
+  }
+
+  function actualizarVtaItemDelButtons(){
+    var rows = vtaItemsListEl.querySelectorAll('.ped-item-row');
+    rows.forEach(function(row){
+      row.querySelector('.ped-item-del').style.visibility = rows.length > 1 ? 'visible' : 'hidden';
+    });
+  }
+
+  function resetVtaItems(){
+    vtaItemsListEl.innerHTML = '';
+    crearVtaItemRow();
+    renderVtaTotal();
+  }
+
+  document.getElementById('vtaAddItem').addEventListener('click', function(){
+    crearVtaItemRow();
+    renderVtaTotal();
+  });
+
+  function leerVtaItems(){
+    var items = [];
+    vtaItemsListEl.querySelectorAll('.ped-item-row').forEach(function(row){
+      var unid = parseNum(row.querySelector('.vta-item-unid').value) || 0;
+      var monto = parseNum(row.querySelector('.vta-item-monto').value) || 0;
+      var detalle = row.querySelector('.vta-item-detalle').value.trim();
+      if (unid > 0 && monto > 0) {
+        items.push({ id: uid(), unid: unid, monto: monto, detalle: detalle });
+      }
+    });
+    return items;
+  }
+
+  function vtaItemsTotal(){
+    var total = 0;
+    leerVtaItems().forEach(function(it){ total += it.unid * it.monto; });
+    return total;
+  }
+
+  function renderVtaTotal(){
+    document.getElementById('vtaTotalOut').value = Math.round(vtaItemsTotal());
+  }
+
+  crearVtaItemRow();
+
+  function nextVentaNumeroInterno(){
+    return state.ventas.reduce(function(max, v){ return Math.max(max, v.numeroInterno || 0); }, 0) + 1;
+  }
+
+  function parseFactura(str){
+    var m = /^(\d+)-(\d+)-(\d+)$/.exec(String(str || '').trim());
+    if (!m) return null;
+    return { est: m[1], pdv: m[2], seq: parseInt(m[3], 10), seqLen: m[3].length };
+  }
+
+  // Toda venta con numeroFactura ya reservado cuenta para el correlativo,
+  // esté marcada como facturada (verde) o todavía pendiente — así nunca se repite un número.
+  function nextNumeroFactura(){
+    var ultimo = null;
+    state.ventas.forEach(function(v){
+      if (v.numeroFactura) {
+        var p = parseFactura(v.numeroFactura);
+        if (p && (!ultimo || p.seq > ultimo.seq)) ultimo = p;
+      }
+    });
+    if (ultimo) return ultimo.est + '-' + ultimo.pdv + '-' + String(ultimo.seq + 1).padStart(ultimo.seqLen, '0');
+    var base = parseFactura(DEFAULT_FACTURA_INICIO);
+    if (base) return base.est + '-' + base.pdv + '-' + String(base.seq).padStart(base.seqLen, '0');
+    return '001-001-0000001';
+  }
+
+  document.getElementById('vtaFacturado').addEventListener('change', function(){
+    var extra = document.getElementById('vtaFacturaExtra');
+    extra.style.display = this.checked ? 'block' : 'none';
+    var numInput = document.getElementById('vtaNumeroFacturaInput');
+    if (this.checked && !numInput.value.trim()) {
+      var existente = activeVentaEditId ? state.ventas.find(function(x){ return x.id === activeVentaEditId; }) : null;
+      numInput.value = (existente && existente.numeroFactura) ? existente.numeroFactura : nextNumeroFactura();
+    }
+  });
+
+  function resetVentaForm(){
+    activeVentaEditId = null;
+    document.getElementById('ventaFormTitle').textContent = 'Nueva venta';
+    document.getElementById('saveVenta').textContent = 'Guardar venta';
+    document.getElementById('cancelEditVenta').style.display = 'none';
+    document.getElementById('vtaCliente').value = '';
+    document.getElementById('vtaFecha').value = todayStr();
+    document.getElementById('vtaFacturado').checked = false;
+    document.getElementById('vtaFacturaExtra').style.display = 'none';
+    document.getElementById('vtaNumeroFacturaInput').value = '';
+    document.getElementById('vtaRuc').value = '';
+    document.getElementById('vtaTelefono').value = '';
+    document.getElementById('vtaEmail').value = '';
+    resetVtaItems();
+  }
+  document.getElementById('cancelEditVenta').addEventListener('click', resetVentaForm);
+
+  document.getElementById('saveVenta').addEventListener('click', function(){
+    var items = leerVtaItems();
+    if (items.length === 0) {
+      var firstMonto = vtaItemsListEl.querySelector('.vta-item-monto');
+      if (firstMonto) firstMonto.focus();
+      return;
+    }
+    var fecha = document.getElementById('vtaFecha').value || todayStr();
+    var cliente = document.getElementById('vtaCliente').value.trim();
+    var ruc = document.getElementById('vtaRuc').value.trim();
+    var telefono = document.getElementById('vtaTelefono').value.trim();
+    var email = document.getElementById('vtaEmail').value.trim();
+    var numeroFacturaInput = document.getElementById('vtaNumeroFacturaInput').value.trim();
+    var aFacturar = document.getElementById('vtaFacturado').checked;
+    var totalInput = parseNum(document.getElementById('vtaTotalOut').value);
+    // El total se auto-completa con la suma de líneas, pero Romi puede pisarlo a mano
+    // (descuento, redondeo) y eso es lo que se guarda.
+    var total = totalInput > 0 ? totalInput : vtaItemsTotal();
+    var detalle = composeDetalleFromItems(items);
+
+    if (activeVentaEditId) {
+      // Al editar nunca se toca el estado facturado/pendiente: eso se maneja
+      // únicamente con la pastilla de la lista, para no "facturar" algo por accidente.
+      var v = state.ventas.find(function(x){ return x.id === activeVentaEditId; });
+      if (v) {
+        v.fecha = fecha; v.cliente = cliente; v.items = items; v.detalle = detalle; v.monto = total;
+        v.telefono = telefono; v.email = email; v.ruc = ruc; v.aFacturar = aFacturar;
+        if (numeroFacturaInput) v.numeroFactura = numeroFacturaInput;
+      }
+    } else {
+      // Toda venta nueva arranca sin ninguna etiqueta de facturación — solo si se
+      // tilda "A facturar" aparece luego en la lista como "pendiente facturar".
+      state.ventas.push({
+        id: uid(), fecha: fecha, numeroInterno: nextVentaNumeroInterno(), cliente: cliente,
+        items: items, detalle: detalle, monto: total,
+        aFacturar: aFacturar, facturado: false, numeroFactura: aFacturar ? (numeroFacturaInput || '') : '',
+        telefono: telefono, email: email, ruc: ruc
+      });
+    }
+    save();
+    renderVentasList();
+    renderVentaTotalMes();
+    resetVentaForm();
+  });
+
+  function editVenta(id){
+    var v = state.ventas.find(function(x){ return x.id === id; });
+    if (!v) return;
+    activeVentaEditId = id;
+    document.getElementById('ventaFormTitle').textContent = 'Editar venta #' + String(v.numeroInterno || 0).padStart(2, '0');
+    document.getElementById('saveVenta').textContent = 'Guardar cambios';
+    document.getElementById('cancelEditVenta').style.display = 'block';
+    document.getElementById('vtaCliente').value = v.cliente || '';
+    document.getElementById('vtaFecha').value = v.fecha || todayStr();
+    vtaItemsListEl.innerHTML = '';
+    var items = (v.items && v.items.length) ? v.items : [{ unid: 1, monto: v.monto || 0, detalle: v.detalle || '' }];
+    items.forEach(function(it){ crearVtaItemRow(it); });
+    renderVtaTotal();
+    document.getElementById('vtaTotalOut').value = Math.round(v.monto || vtaItemsTotal());
+    document.getElementById('vtaFacturado').checked = !!v.aFacturar;
+    document.getElementById('vtaFacturaExtra').style.display = v.aFacturar ? 'block' : 'none';
+    document.getElementById('vtaNumeroFacturaInput').value = v.numeroFactura || '';
+    document.getElementById('vtaRuc').value = v.ruc || '';
+    document.getElementById('vtaTelefono').value = v.telefono || '';
+    document.getElementById('vtaEmail').value = v.email || '';
+    document.getElementById('ventaFormCard').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function deleteVenta(id){
+    askConfirm('¿Eliminar esta venta? No se puede deshacer.', function(){
+      state.ventas = state.ventas.filter(function(x){ return x.id !== id; });
+      if (activeVentaEditId === id) resetVentaForm();
+      save();
+      renderVentasList();
+      renderVentaTotalMes();
+    }, 'Eliminar venta');
+  }
+
+  function toggleVentaFacturado(id){
+    var v = state.ventas.find(function(x){ return x.id === id; });
+    if (!v) return;
+    if (!v.facturado) {
+      v.facturado = true;
+      if (!v.numeroFactura) v.numeroFactura = nextNumeroFactura();
+    } else {
+      v.facturado = false;
+    }
+    save();
+    renderVentasList();
+  }
+
+  function ventasDelMesActual(){
+    var now = new Date();
+    return state.ventas.filter(function(v){
+      var d = new Date((v.fecha || '') + 'T00:00:00');
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    });
+  }
+  function renderVentaTotalMes(){
+    var ventasMes = ventasDelMesActual();
+    var total = ventasMes.reduce(function(s, v){ return s + (v.monto || 0); }, 0);
+    // "Facturadas" = ventas que se marcaron "A facturar" (aunque todavía estén pendientes
+    // de que les toque el número verde); "Sin facturar" = las que nunca se tildaron así.
+    var facturadas = ventasMes.filter(function(v){ return v.aFacturar; }).reduce(function(s, v){ return s + (v.monto || 0); }, 0);
+    var sinFacturar = ventasMes.filter(function(v){ return !v.aFacturar; }).reduce(function(s, v){ return s + (v.monto || 0); }, 0);
+    var hayPendientes = ventasMes.some(function(v){ return v.aFacturar && !v.facturado; });
+    document.getElementById('ventaTotalMesAmount').textContent = fmt(total);
+    document.getElementById('ventaMesActualLabel').textContent = ventaMesLabel(new Date());
+    document.getElementById('ventaTotalFacturadas').textContent = fmt(facturadas);
+    document.getElementById('ventaTotalSinFacturar').textContent = fmt(sinFacturar);
+    document.getElementById('ventaWarnBtn').style.display = hayPendientes ? 'flex' : 'none';
+  }
+
+  document.getElementById('ventaDesgloseToggle').addEventListener('click', function(){
+    var box = document.getElementById('ventaDesglose');
+    var abierto = box.style.display !== 'none';
+    box.style.display = abierto ? 'none' : 'block';
+    this.classList.toggle('open', !abierto);
+  });
+
+  document.getElementById('ventaWarnBtn').addEventListener('click', function(ev){
+    ev.stopPropagation();
+    alert('¡Hay ventas pendientes de facturación!');
+  });
+
+  var VENTA_SORT_KEY = 'dara_venta_sort';
+  function getVentaSort(){ try { return localStorage.getItem(VENTA_SORT_KEY) || 'reciente'; } catch(e){ return 'reciente'; } }
+  function setVentaSort(v){ try { localStorage.setItem(VENTA_SORT_KEY, v); } catch(e){} }
+
+  var ventaFiltroModo = 'mes';
+  var ventaMesSel = new Date();
+  var ventaSearchQ = '';
+
+  document.getElementById('ventaFiltroMesBtn').addEventListener('click', function(){
+    ventaFiltroModo = 'mes';
+    this.classList.add('active');
+    document.getElementById('ventaFiltroTodosBtn').classList.remove('active');
+    document.getElementById('ventaMesNavRow').style.display = 'flex';
+    renderVentasList();
+  });
+  document.getElementById('ventaFiltroTodosBtn').addEventListener('click', function(){
+    ventaFiltroModo = 'todos';
+    this.classList.add('active');
+    document.getElementById('ventaFiltroMesBtn').classList.remove('active');
+    document.getElementById('ventaMesNavRow').style.display = 'none';
+    renderVentasList();
+  });
+  document.getElementById('ventaMesPrev').addEventListener('click', function(){
+    ventaMesSel.setMonth(ventaMesSel.getMonth() - 1);
+    renderVentasList();
+  });
+  document.getElementById('ventaMesNext').addEventListener('click', function(){
+    ventaMesSel.setMonth(ventaMesSel.getMonth() + 1);
+    renderVentasList();
+  });
+  document.getElementById('ventaSearch').addEventListener('input', function(){
+    ventaSearchQ = this.value.trim().toLowerCase();
+    renderVentasList();
+  });
+  document.getElementById('ventaSort').addEventListener('change', function(){
+    setVentaSort(this.value);
+    renderVentasList();
+  });
+
+  function renderVentasList(){
+    var wrap = document.getElementById('ventasList');
+    var empty = document.getElementById('ventasEmpty');
+    wrap.innerHTML = '';
+
+    var mode = getVentaSort();
+    var sortSel = document.getElementById('ventaSort');
+    if (sortSel.value !== mode) sortSel.value = mode;
+
+    document.getElementById('ventaMesNavLabel').textContent = ventaMesLabel(ventaMesSel);
+
+    var filtradas = state.ventas.filter(function(v){
+      if (ventaFiltroModo === 'mes') {
+        var d = new Date((v.fecha || '') + 'T00:00:00');
+        if (d.getFullYear() !== ventaMesSel.getFullYear() || d.getMonth() !== ventaMesSel.getMonth()) return false;
+      }
+      if (ventaSearchQ) {
+        var hay = ((v.cliente || '') + ' ' + (v.detalle || '')).toLowerCase();
+        if (hay.indexOf(ventaSearchQ) === -1) return false;
+      }
+      return true;
+    });
+
+    if (filtradas.length === 0) {
+      empty.style.display = 'block';
+      empty.textContent = ventaSearchQ
+        ? 'No se encontraron ventas con esa búsqueda.'
+        : 'Todavía no cargaste ninguna venta en este período.';
+      return;
+    }
+    empty.style.display = 'none';
+
+    filtradas.sort(function(a, b){
+      if (mode === 'mayor') return (b.monto || 0) - (a.monto || 0);
+      if (mode === 'menor') return (a.monto || 0) - (b.monto || 0);
+      var da = a.fecha || '0000-00-00', db = b.fecha || '0000-00-00';
+      if (mode === 'antiguo') return da < db ? -1 : (da > db ? 1 : 0);
+      return db < da ? -1 : (db > da ? 1 : 0); // reciente (default)
+    });
+
+    filtradas.forEach(function(v){
+      var row = document.createElement('div'); row.className = 'client-row'; row.style.cursor = 'default';
+      var left = document.createElement('div');
+      var name = document.createElement('div'); name.className = 'client-name';
+      name.textContent = '#' + String(v.numeroInterno || 0).padStart(2, '0') + (v.cliente ? (' – ' + v.cliente) : '');
+      left.appendChild(name);
+      if (v.detalle) {
+        var sub = document.createElement('div'); sub.className = 'client-since'; sub.textContent = v.detalle;
+        left.appendChild(sub);
+      }
+      var fechaSub = document.createElement('div'); fechaSub.className = 'client-since'; fechaSub.textContent = fmtDate(v.fecha);
+      left.appendChild(fechaSub);
+      if (v.ruc) {
+        var rucSub = document.createElement('div'); rucSub.className = 'client-since'; rucSub.textContent = 'RUC: ' + v.ruc;
+        left.appendChild(rucSub);
+      }
+
+      var right = document.createElement('div');
+      right.style.textAlign = 'right'; right.style.display = 'flex'; right.style.flexDirection = 'column';
+      right.style.alignItems = 'flex-end'; right.style.gap = '6px';
+      var topRow = document.createElement('div');
+      topRow.style.display = 'flex'; topRow.style.alignItems = 'center'; topRow.style.gap = '8px';
+      var amt = document.createElement('div'); amt.className = 'entry-amount plus'; amt.textContent = fmt(v.monto);
+      var editBtn = document.createElement('button'); editBtn.className = 'del-btn'; editBtn.innerHTML = '&#9998;'; editBtn.title = 'Editar';
+      editBtn.style.fontSize = '15px';
+      editBtn.addEventListener('click', function(ev){ ev.stopPropagation(); editVenta(v.id); });
+      var delBtn = document.createElement('button'); delBtn.className = 'del-btn'; delBtn.innerHTML = '&times;'; delBtn.title = 'Eliminar';
+      delBtn.addEventListener('click', function(ev){ ev.stopPropagation(); deleteVenta(v.id); });
+      topRow.appendChild(amt); topRow.appendChild(editBtn); topRow.appendChild(delBtn);
+
+      right.appendChild(topRow);
+      if (v.aFacturar) {
+        // Si la venta no se marcó "A facturar" al cargarla, es una venta sin
+        // factura y no corresponde mostrar ninguna etiqueta de facturación.
+        var factBtn = document.createElement('button');
+        factBtn.className = 'client-badge ' + (v.facturado ? 'sage' : 'clay');
+        factBtn.textContent = v.facturado ? ('facturado' + (v.numeroFactura ? ' · ' + v.numeroFactura : '')) : 'pendiente facturar';
+        factBtn.addEventListener('click', function(ev){ ev.stopPropagation(); toggleVentaFacturado(v.id); });
+        right.appendChild(factBtn);
+      }
+      row.appendChild(left); row.appendChild(right);
+      wrap.appendChild(row);
+    });
+  }
+
+  document.getElementById('btnGuardarFacturaInicio').addEventListener('click', function(){
+    var val = document.getElementById('facturaInicioInput').value.trim();
+    if (!/^\d+-\d+-\d+$/.test(val)) return;
+    DEFAULT_FACTURA_INICIO = val;
+    try { localStorage.setItem(DEFAULT_FACTURA_INICIO_KEY, DEFAULT_FACTURA_INICIO); } catch(e){}
+    save();
+  });
+
   /* ---------- Backup / Configuración ---------- */
   var dialog = document.getElementById('backupDialog');
   document.getElementById('openBackup').addEventListener('click', function(){
@@ -2075,6 +2638,7 @@
     document.getElementById('defaultTcInput').value = DEFAULT_TC;
     document.getElementById('defaultMargenInput').value = DEFAULT_MARGEN;
     document.getElementById('alertDaysInput').value = ALERT_DAYS;
+    document.getElementById('facturaInicioInput').value = DEFAULT_FACTURA_INICIO;
     refreshPinSectionUI();
     setSyncStatus(SCRIPT_URL ? '' : 'pegá el link de tu Google Apps Script para empezar');
     dialog.showModal();
@@ -2168,8 +2732,10 @@
       state.movimientos = parsed.movimientos || [];
       state.clientas = parsed.clientas || [];
       state.pedidos = parsed.pedidos || parsed.precios || [];
+      state.ventas = parsed.ventas || [];
       save();
       renderSaldo(); renderPedidosList(); renderClientList();
+      renderVentasList(); renderVentaTotalMes();
       refreshPedNumeroSuggestion();
       dialog.close();
     } catch(e){
@@ -2296,6 +2862,8 @@
     renderSaldo();
     renderPedidosList();
     renderClientList();
+    renderVentasList();
+    renderVentaTotalMes();
     refreshPedNumeroSuggestion();
     initLock();
   })();
