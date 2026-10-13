@@ -310,6 +310,25 @@
   .chevron-btn.open { transform: rotate(180deg); }
   .venta-desglose { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); max-width: 220px; }
   .venta-desglose .calc-row { font-size: 13.5px; padding: 4px 0; }
+  .segmented.fp button.selected { background: var(--rose-wash); border-color: var(--rose-deep); color: var(--rose-deep); font-weight: 600; }
+  .aporte-btn {
+    display: inline-block; margin-top: 6px; margin-left: 6px; padding: 4px 10px; font-size: 12px;
+    border-radius: 20px; border: 1px solid var(--line); background: transparent;
+    color: var(--ink-soft); font-family: var(--font-sans); cursor: pointer;
+  }
+  .tag-aporte {
+    font-size: 10.5px; padding: 2px 7px; border-radius: 20px; margin-left: 6px;
+    background: var(--rose-wash); color: var(--rose-deep); font-weight: 600; vertical-align: 1px;
+  }
+  dialog#cajaMovDialog {
+    border: none; border-radius: 18px; padding: 0; width: min(380px, 92vw);
+    background: var(--bg-elevated); color: var(--ink);
+  }
+  dialog#cajaMovDialog::backdrop { background: rgba(0,0,0,0.4); }
+  dialog#cajaMovDialog .dwrap { padding: 22px; position: relative; }
+  dialog#cajaMovDialog h3 { font-family: var(--font-serif); margin: 0 22px 4px 0; }
+  dialog#cajaMovDialog p.note { font-size: 13px; color: var(--ink-soft); margin: 0 0 10px; }
+  .user-chip { font-size: 11px; color: var(--ink-soft); margin-right: 4px; }
   .warn-btn {
     background: none; border: none; padding: 2px; cursor: pointer;
     display: flex; align-items: center; color: #D6A52B;
@@ -467,6 +486,7 @@
       <div class="sub-boutique">Boutique</div>
     </div>
     <div class="headnote">
+      <span class="user-chip" id="userChip"></span>
       <button class="sync-dot-btn" id="syncDotBtn" title="Sin conectar todavía" aria-label="Estado de sincronización"><span class="sync-dot idle" id="syncDot"></span></button>
       <button class="eye-toggle-btn" id="toggleAmounts" title="Ocultar montos" aria-label="Ocultar montos">
         <svg id="eyeIcon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -678,6 +698,35 @@
   </section>
 
   <section id="view-ventas" class="view">
+    <section class="card" id="cajaEfectivoCard">
+      <div class="balance-figure">
+        <div class="who">Efectivo disponible</div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" id="cajaDesgloseToggle" class="chevron-btn" aria-label="Ver detalle del efectivo" title="Ver detalle">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="amount neutral" id="cajaEfectivoAmount">Gs. 0</div>
+        </div>
+        <div id="cajaDesglose" class="venta-desglose" style="display:none; max-width:none;">
+          <div class="calc-row"><span>Ventas cobradas en efectivo</span><span class="val" id="cajaVentasEf">Gs. 0</span></div>
+          <div class="calc-row"><span>Entradas a la caja</span><span class="val" id="cajaEntradas">Gs. 0</span></div>
+          <div class="calc-row"><span>Gastos pagados en efectivo</span><span class="val" id="cajaGastosEf">Gs. 0</span></div>
+          <div class="calc-row"><span>Salidas de la caja</span><span class="val" id="cajaSalidas">Gs. 0</span></div>
+          <ul class="ledger" id="cajaMovsList" style="margin-top:8px;"></ul>
+        </div>
+      </div>
+      <div class="segmented" style="margin-top:0;">
+        <button type="button" id="cajaBtnEntro">Entró plata</button>
+        <button type="button" id="cajaBtnSalio">Salió plata</button>
+      </div>
+    </section>
+
+    <div class="subtabs" style="margin-bottom:16px;">
+      <button type="button" class="subtab active" id="cajaModoVentas">Ventas</button>
+      <button type="button" class="subtab" id="cajaModoGastos">Gastos</button>
+    </div>
+
+    <div id="cajaVentasWrap">
     <section class="card" id="ventaFormCard">
       <h2 class="section-title" id="ventaFormTitle">Nueva venta</h2>
       <label for="vtaCliente">Clienta (opcional)</label>
@@ -693,6 +742,12 @@
           <span>Total de la venta</span>
           <span class="total-edit">Gs. <input type="text" inputmode="decimal" id="vtaTotalOut"></span>
         </div>
+      </div>
+      <label>Forma de cobro</label>
+      <div class="segmented fp" id="vtaFormaPago" style="margin-top:0;">
+        <button type="button" data-fp="efectivo">Efectivo</button>
+        <button type="button" data-fp="transferencia">Transferencia</button>
+        <button type="button" data-fp="tarjeta">Tarjeta</button>
       </div>
       <label style="display:flex; align-items:center; gap:8px; margin-top:16px;">
         <input type="checkbox" id="vtaFacturado" style="width:18px; height:18px; margin:0; accent-color: var(--rose-deep);">
@@ -732,6 +787,9 @@
             </span>
           </div>
           <div class="calc-row"><span>Sin facturar</span><span class="val" id="ventaTotalSinFacturar">Gs. 0</span></div>
+          <div class="calc-row" style="margin-top:6px; padding-top:8px; border-top:1px dashed var(--line);"><span>En efectivo</span><span class="val" id="ventaMesEfectivo">Gs. 0</span></div>
+          <div class="calc-row"><span>Por transferencia</span><span class="val" id="ventaMesTransf">Gs. 0</span></div>
+          <div class="calc-row"><span>Con tarjeta</span><span class="val" id="ventaMesTarjeta">Gs. 0</span></div>
         </div>
       </div>
 
@@ -763,6 +821,45 @@
         <div class="empty-state" id="ventasEmpty">Todavía no cargaste ninguna venta.</div>
       </div>
     </section>
+    </div>
+
+    <div id="cajaGastosWrap" style="display:none;">
+      <section class="card" id="gastoFormCard">
+        <h2 class="section-title" id="gastoFormTitle">Nuevo gasto</h2>
+        <label for="gastoDesc">Detalle</label>
+        <input type="text" id="gastoDesc" placeholder="Ej: bolsas, mercadería, envío">
+        <label for="gastoMonto">Monto (Gs.)</label>
+        <input type="text" id="gastoMonto" inputmode="numeric" placeholder="0">
+        <label for="gastoFecha">Fecha</label>
+        <input type="date" id="gastoFecha">
+        <label>¿Cómo se pagó?</label>
+        <div class="segmented fp" id="gastoFormaPago" style="margin-top:0;">
+          <button type="button" data-fp="efectivo">Efectivo</button>
+          <button type="button" data-fp="transferencia">Transferencia</button>
+          <button type="button" data-fp="romi">Pagó Romi</button>
+        </div>
+        <p class="ped-sub" id="gastoRomiNote" style="display:none;">Se suma solo a Saldo: DARA le debe a Romi.</p>
+        <button class="btn-primary" id="saveGasto">Guardar gasto</button>
+        <button class="btn-secondary" id="cancelEditGasto" style="display:none;">Cancelar edición</button>
+      </section>
+
+      <section class="card" id="gastosListCard">
+        <div class="balance-figure">
+          <div class="who">Gastos de <span id="gastoMesLabel"></span></div>
+          <div class="amount clay" id="gastoTotalMes">Gs. 0</div>
+        </div>
+        <h2 class="section-title">Gastos</h2>
+        <div class="sort-row" style="margin-top:0;">
+          <button class="btn-secondary" id="gastoMesPrev" style="width:auto; margin:0; padding:8px 14px;">‹</button>
+          <div class="sort-label" id="gastoMesNavLabel" style="flex:1; text-align:center; font-size:13.5px; color: var(--ink);"></div>
+          <button class="btn-secondary" id="gastoMesNext" style="width:auto; margin:0; padding:8px 14px;">›</button>
+        </div>
+        <div style="margin-top: 10px;">
+          <div id="gastosList"></div>
+          <div class="empty-state" id="gastosEmpty">Todavía no cargaste ningún gasto en este mes.</div>
+        </div>
+      </section>
+    </div>
   </section>
 
 </main>
@@ -772,7 +869,7 @@
     <button data-view="saldo" class="active"><span class="dot"></span>Saldo</button>
     <button data-view="precios"><span class="dot"></span>Pedidos</button>
     <button data-view="clientas"><span class="dot"></span>Clientas</button>
-    <button data-view="ventas"><span class="dot"></span>Ventas</button>
+    <button data-view="ventas"><span class="dot"></span>Caja</button>
   </div>
 </nav>
 </div>
@@ -795,6 +892,12 @@
     <h3>Configuración</h3>
 
     <div class="cfg-section">
+      <div class="cfg-subhead">Sesión</div>
+      <p class="note" id="sessionNote"></p>
+      <button class="btn-secondary" id="btnCerrarSesion">Cerrar sesión</button>
+    </div>
+
+    <div class="cfg-section" data-admin-only>
       <div class="cfg-subhead">1) Conexión con Google Sheet</div>
       <p class="note">Tu planilla es la única fuente de datos: la app trae todo de ahí al abrir, y guarda ahí mismo cada cambio, al toque — ya no queda nada guardado en el teléfono.</p>
       <label for="scriptUrlInput">Link de Google Apps Script</label>
@@ -853,20 +956,23 @@
       <button class="btn-secondary" id="btnGuardarPlantillaListo">Guardar mensaje</button>
     </div>
 
-    <div class="cfg-section">
-      <div class="cfg-subhead">4) PIN de acceso</div>
-
-      <p class="note" id="pinNote">Protegé la app con un PIN. Se guarda solo en este teléfono.</p>
-      <label for="pinCurrentInput" id="pinCurrentLabel" style="display:none;">PIN actual</label>
-      <input type="password" id="pinCurrentInput" inputmode="numeric" style="display:none;" placeholder="PIN actual">
+    <div class="cfg-section" data-admin-only>
+      <div class="cfg-subhead">4) PINs de acceso</div>
+      <p class="note">Hay dos usuarios, Administrador y Auxiliar. Cada uno entra con su PIN y la app anota quién cargó cada cosa. Valen para todos los dispositivos conectados a la misma planilla.</p>
+      <label>PIN a cambiar</label>
+      <div class="segmented fp" id="pinTargetSeg" style="margin-top:0;">
+        <button type="button" data-fp="admin">Administrador</button>
+        <button type="button" data-fp="aux">Auxiliar</button>
+      </div>
+      <label for="pinCurrentInput">PIN actual del Administrador (para confirmar)</label>
+      <input type="password" id="pinCurrentInput" inputmode="numeric" placeholder="PIN actual">
       <label for="pinNewInput">PIN nuevo</label>
       <input type="password" id="pinNewInput" inputmode="numeric" placeholder="4 a 6 números">
       <button class="btn-secondary" id="btnGuardarPin">Guardar PIN</button>
       <p class="sync-status" id="pinStatus"></p>
-      <button class="btn-secondary" id="btnCerrarSesion" style="display:none; margin-top:14px;">Cerrar sesión</button>
     </div>
 
-    <div class="cfg-section">
+    <div class="cfg-section" data-admin-only>
       <div class="cfg-subhead">5) Respaldo manual (por las dudas)</div>
       <p class="note">Ahora todo se guarda directo en tu planilla, así que esto ya no hace falta para el día a día. Sirve solo como copia extra, o para restaurar datos a mano si alguna vez hace falta.</p>
       <label for="backupOut">Tu respaldo actual</label>
@@ -876,6 +982,21 @@
       <textarea id="backupIn" placeholder="Pegá acá el respaldo guardado"></textarea>
       <button class="btn-primary" id="restoreBackup">Restaurar</button>
     </div>
+  </div>
+</dialog>
+
+<dialog id="cajaMovDialog">
+  <div class="dwrap">
+    <button class="close-x" id="cajaMovClose">&times;</button>
+    <h3 id="cajaMovTitle">Entró plata a la caja</h3>
+    <p class="note" id="cajaMovNote"></p>
+    <label for="cajaMovMonto">Monto (Gs.)</label>
+    <input type="text" id="cajaMovMonto" inputmode="numeric" placeholder="0">
+    <label for="cajaMovNota">Detalle (opcional)</label>
+    <input type="text" id="cajaMovNota" placeholder="Ej: efectivo inicial">
+    <label for="cajaMovFecha">Fecha</label>
+    <input type="date" id="cajaMovFecha">
+    <button class="btn-primary" id="cajaMovGuardar">Guardar</button>
   </div>
 </dialog>
 
@@ -914,14 +1035,52 @@
 <script>
 (function(){
   var SCRIPT_URL_KEY = 'dara_script_url';
-  var DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby2NW5JWEPxR1VdB2m3ijIhHAxYm4N09lh53cP-hSFCJWH6_oTq1xpI_QgoWw91ZHqr/exec';
+  var DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxUqwOz7_H7UBYXOpPmHBp2KXmaeMCJ2srEVd9basvmZXL4uyFnrnZVzWxSHnAlaJd1oA/exec';
   var SCRIPT_URL = DEFAULT_SCRIPT_URL;
   try { SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || DEFAULT_SCRIPT_URL; } catch(e){}
-  var state = { movimientos: [], clientas: [], pedidos: [], ventas: [] };
+  var state = { movimientos: [], clientas: [], pedidos: [], ventas: [], gastos: [], cajaMovs: [] };
   var pendingSave = false;
+  var syncInFlight = false;
+  var syncQueued = false;
+  var changeSeq = 0;
+  var baseSnap = null;   // foto de lo que ya está en la planilla, para mandar solo los cambios
+  var lastRemoteRaw = '';
 
   function save(){
+    changeSeq++;
     syncSave();
+  }
+
+  var ID_FIELD = { config: 'clave' };
+  function snapshotOf(flat){
+    var out = {};
+    Object.keys(flat).forEach(function(key){
+      var idf = ID_FIELD[key] || 'id';
+      var m = {};
+      flat[key].forEach(function(r){ m[String(r[idf])] = JSON.stringify(r); });
+      out[key] = m;
+    });
+    return out;
+  }
+  function computePatch(cur, base){
+    var changes = {};
+    Object.keys(cur).forEach(function(key){
+      var idf = ID_FIELD[key] || 'id';
+      var b = (base && base[key]) || {};
+      var seen = {};
+      var upsert = [];
+      cur[key].forEach(function(r){
+        var id = String(r[idf]);
+        seen[id] = true;
+        if (b[id] !== JSON.stringify(r)) upsert.push(r);
+      });
+      var remove = Object.keys(b).filter(function(id){ return !seen[id]; });
+      if (upsert.length || remove.length) changes[key] = { upsert: upsert, remove: remove };
+    });
+    return changes;
+  }
+  function hasLocalChanges(){
+    return Object.keys(computePatch(flattenForSync(), baseSnap)).length > 0;
   }
 
   function setSyncStatus(msg){
@@ -947,14 +1106,14 @@
     var movClientas = [];
     state.clientas.forEach(function(c){
       (c.movimientos || []).forEach(function(m){
-        movClientas.push({ id: m.id, clienteId: c.id, fecha: m.fecha, motivo: m.motivo, monto: m.monto });
+        movClientas.push({ id: m.id, clienteId: c.id, fecha: m.fecha, motivo: m.motivo, monto: m.monto, creadoPor: m.creadoPor || '' });
       });
     });
     var pagosPedidos = [];
     var pedidoItems = [];
     state.pedidos.forEach(function(p){
       (p.pagos || []).forEach(function(m){
-        pagosPedidos.push({ id: m.id, pedidoId: p.id, fecha: m.fecha, monto: m.monto });
+        pagosPedidos.push({ id: m.id, pedidoId: p.id, fecha: m.fecha, monto: m.monto, creadoPor: m.creadoPor || '' });
       });
       (p.items || []).forEach(function(it){
         pedidoItems.push({ id: it.id, pedidoId: p.id, unid: it.unid, costoUsd: it.costoUsd, detalle: it.detalle });
@@ -968,7 +1127,7 @@
     });
     return {
       saldo: state.movimientos.map(function(m){
-        return { id: m.id, fecha: m.fecha, descripcion: m.desc, monto: m.monto, liquidacion: !!m.liquidacion };
+        return { id: m.id, fecha: m.fecha, descripcion: m.desc, monto: m.monto, liquidacion: !!m.liquidacion, tipo: m.tipo || '', creadoPor: m.creadoPor || '' };
       }),
       clientas: state.clientas.map(function(c){ return { id: c.id, nombre: c.nombre, telefono: c.telefono || '' }; }),
       movClientas: movClientas,
@@ -978,7 +1137,8 @@
           cliente: p.cliente, telefono: p.telefono || '', detalle: p.detalle,
           costoUsd: p.costoUsd, tipoCambio: p.tc, margen: p.margen, costoGs: p.costoGs,
           ganancia: p.ganancia, total: p.total, entregado: pedidoEntregado(p), estado: p.estado,
-          fechaLlego: p.fechaLlego || '', costoEnSaldo: !!p.costoEnSaldo, loteMovId: p.loteMovId || ''
+          fechaLlego: p.fechaLlego || '', costoEnSaldo: !!p.costoEnSaldo, loteMovId: p.loteMovId || '',
+          creadoPor: p.creadoPor || ''
         };
       }),
       pagosPedidos: pagosPedidos,
@@ -988,10 +1148,16 @@
           id: v.id, fecha: v.fecha, numeroInterno: v.numeroInterno, cliente: v.cliente || '',
           detalle: v.detalle || '', monto: v.monto, aFacturar: !!v.aFacturar, facturado: !!v.facturado,
           numeroFactura: v.numeroFactura || '', telefono: v.telefono || '', email: v.email || '',
-          ruc: v.ruc || ''
+          ruc: v.ruc || '', formaPago: v.formaPago || 'efectivo', creadoPor: v.creadoPor || ''
         };
       }),
       ventaItems: ventaItems,
+      gastos: state.gastos.map(function(g){
+        return { id: g.id, fecha: g.fecha, descripcion: g.desc, monto: g.monto, formaPago: g.formaPago, saldoMovId: g.saldoMovId || '', creadoPor: g.creadoPor || '' };
+      }),
+      cajaMovs: state.cajaMovs.map(function(c){
+        return { id: c.id, fecha: c.fecha, tipo: c.tipo, monto: c.monto, nota: c.nota || '', saldoMovId: c.saldoMovId || '', creadoPor: c.creadoPor || '' };
+      }),
       config: [
         { clave: 'waTemplate', valor: WA_TEMPLATE },
         { clave: 'waTemplateLlego', valor: WA_TEMPLATE_LLEGO },
@@ -1000,13 +1166,37 @@
         { clave: 'margenDefault', valor: String(DEFAULT_MARGEN) },
         { clave: 'alertDays', valor: String(ALERT_DAYS) },
         { clave: 'facturaInicio', valor: DEFAULT_FACTURA_INICIO },
-        { clave: 'pinHash', valor: getStoredPinHash() }
-      ]
+        { clave: 'pinHashAdmin', valor: getStoredPinHash('admin') },
+        { clave: 'pinHashAux', valor: getStoredPinHash('aux') }
+      ].filter(function(r){ return r.valor !== ''; })
     };
   }
 
+  // Cola de guardado: siempre hay un solo envío en vuelo; si mientras tanto hay más cambios, se manda otro después.
   async function syncSave(){
     if (!SCRIPT_URL) { setSyncIndicator('idle'); setSyncStatus('pegá el link de tu Apps Script arriba'); return; }
+    if (syncInFlight) { syncQueued = true; return; }
+    syncInFlight = true;
+    try {
+      var ok = true;
+      do {
+        syncQueued = false;
+        ok = await sendPatch();
+      } while (syncQueued && ok);
+    } finally {
+      syncInFlight = false;
+    }
+  }
+
+  async function sendPatch(){
+    var cur = flattenForSync();
+    var changes = computePatch(cur, baseSnap);
+    if (!Object.keys(changes).length) {
+      setSyncIndicator('ok');
+      setSyncStatus('todo guardado ✓');
+      return true;
+    }
+    var sentSeq = changeSeq;
     pendingSave = true;
     setSyncIndicator('syncing');
     setSyncStatus('guardando en tu planilla…');
@@ -1014,18 +1204,47 @@
       var res = await fetch(SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'save', data: flattenForSync() })
+        body: JSON.stringify({ action: 'patch', changes: changes })
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
+      var text = await res.text();
+      var json = JSON.parse(text);
+      if (json.error) throw new Error(json.error);
       pendingSave = false;
+      baseSnap = snapshotOf(cur);   // lo que mandamos ya quedó en la planilla
+      if (changeSeq === sentSeq) {
+        // Nadie tocó nada mientras guardábamos: tomamos también lo que cargaron otras personas.
+        lastRemoteRaw = text;
+        applyRemoteData(json);
+      } else {
+        syncQueued = true;
+      }
       setSyncIndicator('ok');
       setSyncStatus('guardado ✓ (' + new Date().toLocaleTimeString('es-PY') + ')');
+      return true;
     } catch(err) {
       console.error(err);
       pendingSave = false;
       setSyncIndicator('error');
       setSyncStatus('no se pudo guardar — revisá tu conexión y tocá "Subir cambios ahora"');
+      return false;
     }
+  }
+
+  // Trae lo último de la planilla (cambios de otras personas) sin pisar nada que esté sin guardar.
+  async function refreshFromRemote(){
+    if (!SCRIPT_URL || !baseSnap || syncInFlight || document.hidden) return;
+    var seqAtStart = changeSeq;
+    try {
+      var res = await fetch(SCRIPT_URL, { method: 'GET' });
+      if (!res.ok) return;
+      var text = await res.text();
+      if (text === lastRemoteRaw) return;
+      if (syncInFlight || changeSeq !== seqAtStart || hasLocalChanges()) return;
+      var json = JSON.parse(text);
+      lastRemoteRaw = text;
+      applyRemoteData(json);
+    } catch(e){}
   }
 
   async function syncLoad(){
@@ -1035,20 +1254,34 @@
     try {
       var res = await fetch(SCRIPT_URL, { method: 'GET' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      var json = await res.json();
+      var text = await res.text();
+      var json = JSON.parse(text);
+      lastRemoteRaw = text;
+      applyRemoteData(json);
+      setSyncIndicator('ok');
+      setSyncStatus(state.movimientos.length + ' movimientos, ' + state.clientas.length + ' clientas traídas ✓');
+    } catch(err) {
+      console.error(err);
+      setSyncIndicator('error');
+      setSyncStatus('no se pudo cargar (revisá el link y que el Apps Script esté publicado como "Cualquiera")');
+    }
+  }
+
+  function applyRemoteData(json){
       var clientesById = {};
       (json.clientas || []).forEach(function(c){
         clientesById[c.id] = { id: c.id, nombre: c.nombre, telefono: c.telefono || '', movimientos: [] };
       });
       (json.movClientas || []).forEach(function(m){
         if (clientesById[m.clienteId]) {
-          clientesById[m.clienteId].movimientos.push({ id: m.id, fecha: m.fecha, motivo: m.motivo, monto: Number(m.monto) });
+          clientesById[m.clienteId].movimientos.push({ id: m.id, fecha: m.fecha, motivo: m.motivo, monto: Number(m.monto), creadoPor: m.creadoPor || '' });
         }
       });
       state.movimientos = (json.saldo || []).map(function(m){
         return {
           id: m.id, fecha: m.fecha, desc: m.descripcion !== undefined ? m.descripcion : m.desc, monto: Number(m.monto),
-          liquidacion: (m.liquidacion === true || m.liquidacion === 'TRUE' || m.liquidacion === 'true')
+          liquidacion: (m.liquidacion === true || m.liquidacion === 'TRUE' || m.liquidacion === 'true'),
+          tipo: m.tipo || '', creadoPor: m.creadoPor || ''
         };
       });
       state.clientas = Object.keys(clientesById).map(function(k){ return clientesById[k]; });
@@ -1065,13 +1298,13 @@
           estado: p.estado || 'pendiente',
           fechaLlego: p.fechaLlego || '',
           costoEnSaldo: (p.costoEnSaldo === true || p.costoEnSaldo === 'TRUE' || p.costoEnSaldo === 'true'),
-          loteMovId: p.loteMovId || '',
+          loteMovId: p.loteMovId || '', creadoPor: p.creadoPor || '',
           pagos: [], items: []
         };
       });
       (json.pagosPedidos || []).forEach(function(m){
         if (pedidosById[m.pedidoId]) {
-          pedidosById[m.pedidoId].pagos.push({ id: m.id, fecha: m.fecha, monto: Number(m.monto) });
+          pedidosById[m.pedidoId].pagos.push({ id: m.id, fecha: m.fecha, monto: Number(m.monto), creadoPor: m.creadoPor || '' });
         }
       });
       (json.pedidoItems || []).forEach(function(it){
@@ -1108,7 +1341,7 @@
           cliente: v.cliente || '', detalle: v.detalle || '', monto: Number(v.monto) || 0,
           aFacturar: aFacturarBool, facturado: facturadoBool,
           numeroFactura: v.numeroFactura || '', telefono: v.telefono || '', email: v.email || '',
-          ruc: v.ruc || '', items: []
+          ruc: v.ruc || '', formaPago: v.formaPago || 'efectivo', creadoPor: v.creadoPor || '', items: []
         };
       });
       (json.ventaItems || []).forEach(function(it){
@@ -1119,6 +1352,15 @@
         }
       });
       state.ventas = Object.keys(ventasById).map(function(k){ return ventasById[k]; });
+      state.gastos = (json.gastos || []).map(function(g){
+        return {
+          id: g.id, fecha: g.fecha, desc: g.descripcion !== undefined ? g.descripcion : (g.desc || ''),
+          monto: Number(g.monto) || 0, formaPago: g.formaPago || 'efectivo', saldoMovId: g.saldoMovId || '', creadoPor: g.creadoPor || ''
+        };
+      });
+      state.cajaMovs = (json.cajaMovs || []).map(function(c){
+        return { id: c.id, fecha: c.fecha, tipo: c.tipo, monto: Number(c.monto) || 0, nota: c.nota || '', saldoMovId: c.saldoMovId || '', creadoPor: c.creadoPor || '' };
+      });
       (json.config || []).forEach(function(row){
         if (row.clave === 'waTemplate' && row.valor) {
           WA_TEMPLATE = row.valor;
@@ -1150,20 +1392,19 @@
           DEFAULT_FACTURA_INICIO = row.valor;
           try { localStorage.setItem(DEFAULT_FACTURA_INICIO_KEY, DEFAULT_FACTURA_INICIO); } catch(e){}
         }
-        if (row.clave === 'pinHash' && row.valor) {
-          try { localStorage.setItem(PIN_HASH_KEY, row.valor); } catch(e){}
+        if (row.clave === 'pinHashAdmin' && row.valor) {
+          try { localStorage.setItem(PIN_HASH_KEY_PREFIX + 'admin', row.valor); } catch(e){}
+        }
+        if (row.clave === 'pinHashAux' && row.valor) {
+          try { localStorage.setItem(PIN_HASH_KEY_PREFIX + 'aux', row.valor); } catch(e){}
         }
       });
       renderSaldo(); renderPedidosList(); renderClientList();
-      renderVentasList(); renderVentaTotalMes();
+      renderVentasList(); renderVentaTotalMes(); renderGastosList();
       refreshPedNumeroSuggestion();
-      setSyncIndicator('ok');
-      setSyncStatus(state.movimientos.length + ' movimientos, ' + state.clientas.length + ' clientas traídas ✓');
-    } catch(err) {
-      console.error(err);
-      setSyncIndicator('error');
-      setSyncStatus('no se pudo cargar (revisá el link y que el Apps Script esté publicado como "Cualquiera")');
-    }
+      if (activePedidoId) renderPedidoDetail();
+      if (activeClientId) renderClientDetail();
+      baseSnap = snapshotOf(flattenForSync());
   }
 
   var AMOUNTS_HIDDEN_KEY = 'dara_amounts_hidden';
@@ -1200,16 +1441,17 @@
       // Las alertas de pedidos vencidos dentro de Clientas son un reflejo en vivo:
       // recalculamos al entrar a la pestaña para que nunca quede desactualizada.
       if (btn.dataset.view === 'clientas') renderClientList();
-      if (btn.dataset.view === 'ventas') { renderVentasList(); renderVentaTotalMes(); }
+      if (btn.dataset.view === 'ventas') { renderVentasList(); renderVentaTotalMes(); renderGastosList(); }
     });
   });
 
   /* ---------- Confirmación (borrar / acciones sensibles) ---------- */
   var confirmDialog = document.getElementById('confirmDialog');
   var confirmOkHandler = null;
-  function askConfirm(message, onConfirm, okLabel){
+  function askConfirm(message, onConfirm, okLabel, cancelLabel){
     document.getElementById('confirmMsg').textContent = message;
     document.getElementById('confirmOk').textContent = okLabel || 'Eliminar';
+    document.getElementById('confirmCancel').textContent = cancelLabel || 'Cancelar';
     confirmOkHandler = onConfirm;
     confirmDialog.showModal();
   }
@@ -1249,6 +1491,7 @@
     renderCalcOutput();
     renderVentasList();
     renderVentaTotalMes();
+    renderGastosList();
     if (activePedidoId) renderPedidoDetail();
     if (activeClientId) renderClientDetail();
   }
@@ -1270,12 +1513,14 @@
     segMinus.classList.toggle('selected', sign === -1);
   }
   var saldoEsLiquidacion = false;
-  segPlus.addEventListener('click', function(){ setSaldoSign(1); saldoEsLiquidacion = false; });
-  segMinus.addEventListener('click', function(){ setSaldoSign(-1); saldoEsLiquidacion = false; });
+  var saldoTipo = '';
+  segPlus.addEventListener('click', function(){ setSaldoSign(1); saldoEsLiquidacion = false; saldoTipo = ''; });
+  segMinus.addEventListener('click', function(){ setSaldoSign(-1); saldoEsLiquidacion = false; saldoTipo = ''; });
   setSaldoSign(1);
   document.getElementById('saldoFecha').value = todayStr();
 
   function renderSaldo(){
+    renderCaja(); // el efectivo depende también de movimientos vinculados a Saldo
     var balance = state.movimientos.reduce(function(sum, m){ return sum + m.monto; }, 0);
     var whoEl = document.getElementById('saldoWho');
     var amtEl = document.getElementById('saldoAmount');
@@ -1300,7 +1545,12 @@
       var li = document.createElement('li');
       var left = document.createElement('div'); left.className = 'entry-left';
       var desc = document.createElement('div'); desc.className = 'entry-desc'; desc.textContent = m.desc || '(sin detalle)';
-      var meta = document.createElement('div'); meta.className = 'entry-meta'; meta.textContent = fmtDate(m.fecha);
+      if (m.tipo) {
+        var tipoTag = document.createElement('span'); tipoTag.className = 'tag-aporte';
+        tipoTag.textContent = m.tipo === 'aporte' ? 'aporte' : 'perdonado';
+        desc.appendChild(tipoTag);
+      }
+      var meta = document.createElement('div'); meta.className = 'entry-meta'; meta.textContent = fmtDate(m.fecha) + byTag(m);
       left.appendChild(desc); left.appendChild(meta);
       if (m.monto > 0 && !m.liquidacion) {
         var payBtn = document.createElement('button'); payBtn.className = 'pay-btn'; payBtn.textContent = 'Marcar pagado';
@@ -1313,6 +1563,17 @@
           document.querySelector('#view-saldo .card').scrollIntoView({ behavior: 'smooth' });
         });
         left.appendChild(payBtn);
+        var aporteBtn = document.createElement('button'); aporteBtn.className = 'aporte-btn'; aporteBtn.textContent = 'Pasar a aporte';
+        aporteBtn.addEventListener('click', function(){
+          setSaldoSign(-1);
+          saldoEsLiquidacion = true;
+          saldoTipo = 'aporte';
+          document.getElementById('saldoDesc').value = 'Aporte: ' + (m.desc || 'saldo');
+          document.getElementById('saldoMonto').value = m.monto;
+          document.getElementById('saldoFecha').value = todayStr();
+          document.querySelector('#view-saldo .card').scrollIntoView({ behavior: 'smooth' });
+        });
+        left.appendChild(aporteBtn);
       } else if (m.monto < 0 && !m.liquidacion) {
         var collectBtn = document.createElement('button'); collectBtn.className = 'collect-btn'; collectBtn.textContent = 'Marcar cobrado';
         collectBtn.addEventListener('click', function(){
@@ -1324,6 +1585,17 @@
           document.querySelector('#view-saldo .card').scrollIntoView({ behavior: 'smooth' });
         });
         left.appendChild(collectBtn);
+        var perdonBtn = document.createElement('button'); perdonBtn.className = 'aporte-btn'; perdonBtn.textContent = 'Perdonar';
+        perdonBtn.addEventListener('click', function(){
+          setSaldoSign(1);
+          saldoEsLiquidacion = true;
+          saldoTipo = 'perdon';
+          document.getElementById('saldoDesc').value = 'Perdonado: ' + (m.desc || 'saldo');
+          document.getElementById('saldoMonto').value = Math.abs(m.monto);
+          document.getElementById('saldoFecha').value = todayStr();
+          document.querySelector('#view-saldo .card').scrollIntoView({ behavior: 'smooth' });
+        });
+        left.appendChild(perdonBtn);
       }
       var right = document.createElement('div'); right.className = 'entry-right';
       var amt = document.createElement('div'); amt.className = 'entry-amount ' + (m.monto >= 0 ? 'plus' : 'minus');
@@ -1337,6 +1609,8 @@
           state.pedidos.forEach(function(p){
             if (p.loteMovId === m.id) { p.costoEnSaldo = false; p.loteMovId = ''; }
           });
+          state.gastos.forEach(function(g){ if (g.saldoMovId === m.id) g.saldoMovId = ''; });
+          state.cajaMovs = state.cajaMovs.filter(function(c){ return c.saldoMovId !== m.id; });
           save(); renderSaldo();
         });
       });
@@ -1353,10 +1627,20 @@
     var fechaEl = document.getElementById('saldoFecha');
     var monto = parseFloat(montoEl.value);
     if (!monto || monto <= 0) { montoEl.focus(); return; }
-    state.movimientos.push({ id: uid(), fecha: fechaEl.value || todayStr(), desc: descEl.value.trim(), monto: monto * saldoSign, liquidacion: saldoEsLiquidacion });
+    var esLiq = saldoEsLiquidacion, tipoNow = saldoTipo, signNow = saldoSign;
+    var nuevoMov = { id: uid(), fecha: fechaEl.value || todayStr(), desc: descEl.value.trim(), monto: monto * saldoSign, liquidacion: saldoEsLiquidacion, tipo: saldoTipo, creadoPor: who() };
+    state.movimientos.push(nuevoMov);
     saldoEsLiquidacion = false;
+    saldoTipo = '';
     save(); renderSaldo();
     descEl.value = ''; montoEl.value = '';
+    // Un pago de DARA a Romi puede haber salido del efectivo de la caja: se pregunta una vez.
+    if (esLiq && signNow === -1 && !tipoNow) {
+      askConfirm('¿Este pago a Romi salió del efectivo de la caja?', function(){
+        state.cajaMovs.push({ id: uid(), fecha: nuevoMov.fecha, tipo: 'salida', monto: monto, nota: nuevoMov.desc || 'Pago a Romi', saldoMovId: nuevoMov.id, creadoPor: who() });
+        save(); renderCaja();
+      }, 'Sí, salió de la caja', 'No');
+    }
   });
 
   /* ---------- Pago de tarjeta por lote (varios pedidos + extra) ---------- */
@@ -1437,7 +1721,7 @@
     var fecha = document.getElementById('loteFecha').value || todayStr();
     var movId = uid();
     var desc = document.getElementById('loteDesc').value.trim() || buildLoteDescDefault(seleccionados, extra);
-    state.movimientos.push({ id: movId, fecha: fecha, desc: desc, monto: total });
+    state.movimientos.push({ id: movId, fecha: fecha, desc: desc, monto: total, creadoPor: who() });
     seleccionados.forEach(function(p){ p.costoEnSaldo = true; p.loteMovId = movId; });
     save();
     renderSaldo();
@@ -1669,7 +1953,7 @@
         left.appendChild(sub);
       }
       var fechaSub = document.createElement('div'); fechaSub.className = 'client-since';
-      fechaSub.textContent = fmtDate(p.fecha);
+      fechaSub.textContent = fmtDate(p.fecha) + byTag(p);
       left.appendChild(fechaSub);
       var badge = document.createElement('div');
       badge.className = 'client-badge ' + estadoClass(p.estado);
@@ -1745,7 +2029,7 @@
       p.pagos.slice().sort(function(a, b){ return a.fecha < b.fecha ? 1 : -1; }).forEach(function(pago){
         var li = document.createElement('li');
         var left = document.createElement('div'); left.className = 'entry-left';
-        var desc = document.createElement('div'); desc.className = 'entry-desc'; desc.textContent = fmtDate(pago.fecha);
+        var desc = document.createElement('div'); desc.className = 'entry-desc'; desc.textContent = fmtDate(pago.fecha) + byTag(pago);
         left.appendChild(desc);
         var right = document.createElement('div'); right.className = 'entry-right';
         var amt = document.createElement('div'); amt.className = 'entry-amount plus'; amt.textContent = '+' + fmt(pago.monto).replace('Gs. ','');
@@ -1799,7 +2083,7 @@
     var monto = parseFloat(montoEl.value);
     if (!monto || monto <= 0) { montoEl.focus(); return; }
     if (!p.pagos) p.pagos = [];
-    p.pagos.push({ id: uid(), fecha: fechaEl.value || todayStr(), monto: monto });
+    p.pagos.push({ id: uid(), fecha: fechaEl.value || todayStr(), monto: monto, creadoPor: who() });
     save(); renderPedidoDetail();
     montoEl.value = '';
   });
@@ -1810,7 +2094,7 @@
     var saldo = pedidoSaldo(p);
     if (saldo <= 0) { alert('Este pedido ya está saldado.'); return; }
     if (!p.pagos) p.pagos = [];
-    p.pagos.push({ id: uid(), fecha: document.getElementById('pedPagoFecha').value || todayStr(), monto: saldo });
+    p.pagos.push({ id: uid(), fecha: document.getElementById('pedPagoFecha').value || todayStr(), monto: saldo, creadoPor: who() });
     save(); renderPedidoDetail();
   });
 
@@ -1878,7 +2162,7 @@
     var gananciaFinal = totalFinal - c.costoGs;
     var entregadoVal = parseFloat(document.getElementById('pedEntregado').value) || 0;
     var fecha = document.getElementById('pedFecha').value || todayStr();
-    var pagos = entregadoVal > 0 ? [{ id: uid(), fecha: fecha, monto: entregadoVal }] : [];
+    var pagos = entregadoVal > 0 ? [{ id: uid(), fecha: fecha, monto: entregadoVal, creadoPor: who() }] : [];
     state.pedidos.push({
       id: uid(), fecha: fecha, numeroInterno: nextNumeroInterno(),
       cliente: clienteEl.value.trim(),
@@ -1887,7 +2171,7 @@
       detalle: composeDetalleFromItems(items),
       items: items,
       costoUsd: c.costoUsd, tc: c.tc, margen: c.margen, costoGs: c.costoGs, ganancia: gananciaFinal, total: totalFinal,
-      pagos: pagos, estado: 'pendiente'
+      pagos: pagos, estado: 'pendiente', creadoPor: who()
     });
     save(); renderPedidosList();
     ['pedCliente','pedTelefono','pedNumero','pedEntregado'].forEach(function(id){
@@ -2190,7 +2474,7 @@
       var li = document.createElement('li');
       var left = document.createElement('div'); left.className = 'entry-left';
       var desc = document.createElement('div'); desc.className = 'entry-desc'; desc.textContent = m.motivo || '(sin motivo)';
-      var meta = document.createElement('div'); meta.className = 'entry-meta'; meta.textContent = fmtDate(m.fecha);
+      var meta = document.createElement('div'); meta.className = 'entry-meta'; meta.textContent = fmtDate(m.fecha) + byTag(m);
       left.appendChild(desc); left.appendChild(meta);
       if (m.monto > 0) {
         var payBtn2 = document.createElement('button'); payBtn2.className = 'pay-btn'; payBtn2.textContent = 'Marcar cobrado';
@@ -2238,7 +2522,7 @@
     var fechaEl = document.getElementById('clientFecha');
     var monto = parseFloat(montoEl.value);
     if (!monto || monto <= 0) { montoEl.focus(); return; }
-    c.movimientos.push({ id: uid(), fecha: fechaEl.value || todayStr(), motivo: motivoEl.value.trim(), monto: monto * clientSaldoSign });
+    c.movimientos.push({ id: uid(), fecha: fechaEl.value || todayStr(), motivo: motivoEl.value.trim(), monto: monto * clientSaldoSign, creadoPor: who() });
     save(); renderClientDetail();
     motivoEl.value = ''; montoEl.value = '';
   });
@@ -2366,6 +2650,7 @@
     document.getElementById('vtaRuc').value = '';
     document.getElementById('vtaTelefono').value = '';
     document.getElementById('vtaEmail').value = '';
+    vtaFormaSeg.set('efectivo');
     resetVtaItems();
   }
   document.getElementById('cancelEditVenta').addEventListener('click', resetVentaForm);
@@ -2396,7 +2681,7 @@
       var v = state.ventas.find(function(x){ return x.id === activeVentaEditId; });
       if (v) {
         v.fecha = fecha; v.cliente = cliente; v.items = items; v.detalle = detalle; v.monto = total;
-        v.telefono = telefono; v.email = email; v.ruc = ruc; v.aFacturar = aFacturar;
+        v.telefono = telefono; v.email = email; v.ruc = ruc; v.aFacturar = aFacturar; v.formaPago = vtaFormaSeg.get();
         if (numeroFacturaInput) v.numeroFactura = numeroFacturaInput;
       }
     } else {
@@ -2406,7 +2691,7 @@
         id: uid(), fecha: fecha, numeroInterno: nextVentaNumeroInterno(), cliente: cliente,
         items: items, detalle: detalle, monto: total,
         aFacturar: aFacturar, facturado: false, numeroFactura: aFacturar ? (numeroFacturaInput || '') : '',
-        telefono: telefono, email: email, ruc: ruc
+        telefono: telefono, email: email, ruc: ruc, formaPago: vtaFormaSeg.get(), creadoPor: who()
       });
     }
     save();
@@ -2433,6 +2718,7 @@
     document.getElementById('vtaFacturaExtra').style.display = v.aFacturar ? 'block' : 'none';
     document.getElementById('vtaNumeroFacturaInput').value = v.numeroFactura || '';
     document.getElementById('vtaRuc').value = v.ruc || '';
+    vtaFormaSeg.set(v.formaPago || 'efectivo');
     document.getElementById('vtaTelefono').value = v.telefono || '';
     document.getElementById('vtaEmail').value = v.email || '';
     document.getElementById('ventaFormCard').scrollIntoView({ behavior: 'smooth' });
@@ -2481,6 +2767,13 @@
     document.getElementById('ventaTotalFacturadas').textContent = fmt(facturadas);
     document.getElementById('ventaTotalSinFacturar').textContent = fmt(sinFacturar);
     document.getElementById('ventaWarnBtn').style.display = hayPendientes ? 'flex' : 'none';
+    function porForma(fp){
+      return ventasMes.filter(function(v){ return (v.formaPago || 'efectivo') === fp; }).reduce(function(s, v){ return s + (v.monto || 0); }, 0);
+    }
+    document.getElementById('ventaMesEfectivo').textContent = fmt(porForma('efectivo'));
+    document.getElementById('ventaMesTransf').textContent = fmt(porForma('transferencia'));
+    document.getElementById('ventaMesTarjeta').textContent = fmt(porForma('tarjeta'));
+    renderCaja();
   }
 
   document.getElementById('ventaDesgloseToggle').addEventListener('click', function(){
@@ -2501,6 +2794,7 @@
 
   var ventaFiltroModo = 'mes';
   var ventaMesSel = new Date();
+  ventaMesSel.setDate(1); // evita saltos de mes al retroceder desde un día 29-31
   var ventaSearchQ = '';
 
   document.getElementById('ventaFiltroMesBtn').addEventListener('click', function(){
@@ -2584,7 +2878,7 @@
         var sub = document.createElement('div'); sub.className = 'client-since'; sub.textContent = v.detalle;
         left.appendChild(sub);
       }
-      var fechaSub = document.createElement('div'); fechaSub.className = 'client-since'; fechaSub.textContent = fmtDate(v.fecha);
+      var fechaSub = document.createElement('div'); fechaSub.className = 'client-since'; fechaSub.textContent = fmtDate(v.fecha) + ' · ' + (FP_LABEL[v.formaPago || 'efectivo'] || '') + byTag(v);
       left.appendChild(fechaSub);
       if (v.ruc) {
         var rucSub = document.createElement('div'); rucSub.className = 'client-since'; rucSub.textContent = 'RUC: ' + v.ruc;
@@ -2626,6 +2920,249 @@
     try { localStorage.setItem(DEFAULT_FACTURA_INICIO_KEY, DEFAULT_FACTURA_INICIO); } catch(e){}
     save();
   });
+
+  /* ---------- Caja: efectivo disponible y gastos ---------- */
+  var FP_LABEL = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', romi: 'Pagó Romi' };
+
+  function makeSeg(id, def, onChange){
+    var el = document.getElementById(id);
+    var val = def;
+    function set(v){
+      val = v;
+      el.querySelectorAll('button').forEach(function(b){ b.classList.toggle('selected', b.dataset.fp === v); });
+      if (onChange) onChange(v);
+    }
+    el.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click', function(){ set(b.dataset.fp); });
+    });
+    set(def);
+    return { get: function(){ return val; }, set: set };
+  }
+  var vtaFormaSeg = makeSeg('vtaFormaPago', 'efectivo');
+  var gastoFormaSeg = makeSeg('gastoFormaPago', 'efectivo', function(v){
+    document.getElementById('gastoRomiNote').style.display = v === 'romi' ? 'block' : 'none';
+  });
+
+  function sumMonto(arr, pred){
+    return arr.reduce(function(s, x){ return pred(x) ? s + (x.monto || 0) : s; }, 0);
+  }
+
+  function renderCaja(){
+    var ventasEf = sumMonto(state.ventas, function(v){ return (v.formaPago || 'efectivo') === 'efectivo'; });
+    var gastosEf = sumMonto(state.gastos, function(g){ return g.formaPago === 'efectivo'; });
+    var entradas = sumMonto(state.cajaMovs, function(c){ return c.tipo === 'entrada'; });
+    var salidas = sumMonto(state.cajaMovs, function(c){ return c.tipo === 'salida'; });
+    var total = ventasEf + entradas - gastosEf - salidas;
+    var amtEl = document.getElementById('cajaEfectivoAmount');
+    amtEl.textContent = fmt(total);
+    amtEl.classList.remove('clay', 'sage', 'neutral');
+    amtEl.classList.add(total > 0 ? 'sage' : (total < 0 ? 'clay' : 'neutral'));
+    document.getElementById('cajaVentasEf').textContent = fmt(ventasEf);
+    document.getElementById('cajaEntradas').textContent = fmt(entradas);
+    document.getElementById('cajaGastosEf').textContent = fmt(gastosEf);
+    document.getElementById('cajaSalidas').textContent = fmt(salidas);
+
+    var list = document.getElementById('cajaMovsList');
+    list.innerHTML = '';
+    state.cajaMovs.slice().sort(function(a, b){ return (a.fecha || '') < (b.fecha || '') ? 1 : -1; }).forEach(function(c){
+      var li = document.createElement('li');
+      var left = document.createElement('div'); left.className = 'entry-left';
+      var d = document.createElement('div'); d.className = 'entry-desc';
+      d.textContent = c.nota || (c.tipo === 'entrada' ? 'Entró plata' : 'Salió plata');
+      var meta = document.createElement('div'); meta.className = 'entry-meta'; meta.textContent = fmtDate(c.fecha) + byTag(c);
+      left.appendChild(d); left.appendChild(meta);
+      var right = document.createElement('div'); right.className = 'entry-right';
+      var amt = document.createElement('div'); amt.className = 'entry-amount ' + (c.tipo === 'entrada' ? 'minus' : 'plus');
+      amt.textContent = (c.tipo === 'entrada' ? '+' : '−') + fmt(c.monto).replace('Gs. ', '');
+      var del = document.createElement('button'); del.className = 'del-btn'; del.innerHTML = '&times;'; del.title = 'Eliminar';
+      del.addEventListener('click', function(){
+        askConfirm('¿Eliminar este movimiento de la caja?', function(){
+          state.cajaMovs = state.cajaMovs.filter(function(x){ return x.id !== c.id; });
+          save(); renderCaja();
+        });
+      });
+      right.appendChild(amt); right.appendChild(del);
+      li.appendChild(left); li.appendChild(right);
+      list.appendChild(li);
+    });
+  }
+
+  document.getElementById('cajaDesgloseToggle').addEventListener('click', function(){
+    var box = document.getElementById('cajaDesglose');
+    var abierto = box.style.display !== 'none';
+    box.style.display = abierto ? 'none' : 'block';
+    this.classList.toggle('open', !abierto);
+  });
+
+  var cajaMovDialog = document.getElementById('cajaMovDialog');
+  var cajaMovTipo = 'entrada';
+  function openCajaMov(tipo){
+    cajaMovTipo = tipo;
+    document.getElementById('cajaMovTitle').textContent = tipo === 'entrada' ? 'Entró plata a la caja' : 'Salió plata de la caja';
+    document.getElementById('cajaMovNote').textContent = tipo === 'entrada'
+      ? 'Efectivo inicial, o plata que entró a la caja y no es una venta.'
+      : 'Retiros o depósitos al banco. Los gastos van en la solapa Gastos.';
+    document.getElementById('cajaMovMonto').value = '';
+    document.getElementById('cajaMovNota').value = '';
+    document.getElementById('cajaMovFecha').value = todayStr();
+    cajaMovDialog.showModal();
+  }
+  document.getElementById('cajaBtnEntro').addEventListener('click', function(){ openCajaMov('entrada'); });
+  document.getElementById('cajaBtnSalio').addEventListener('click', function(){ openCajaMov('salida'); });
+  document.getElementById('cajaMovClose').addEventListener('click', function(){ cajaMovDialog.close(); });
+  document.getElementById('cajaMovGuardar').addEventListener('click', function(){
+    var montoEl = document.getElementById('cajaMovMonto');
+    var monto = parseNum(montoEl.value);
+    if (!(monto > 0)) { montoEl.focus(); return; }
+    state.cajaMovs.push({
+      id: uid(), fecha: document.getElementById('cajaMovFecha').value || todayStr(), tipo: cajaMovTipo,
+      monto: monto, nota: document.getElementById('cajaMovNota').value.trim(), saldoMovId: '', creadoPor: who()
+    });
+    save(); renderCaja();
+    cajaMovDialog.close();
+  });
+
+  function setCajaModo(modo){
+    document.getElementById('cajaVentasWrap').style.display = modo === 'ventas' ? 'block' : 'none';
+    document.getElementById('cajaGastosWrap').style.display = modo === 'gastos' ? 'block' : 'none';
+    document.getElementById('cajaModoVentas').classList.toggle('active', modo === 'ventas');
+    document.getElementById('cajaModoGastos').classList.toggle('active', modo === 'gastos');
+    if (modo === 'gastos') renderGastosList();
+  }
+  document.getElementById('cajaModoVentas').addEventListener('click', function(){ setCajaModo('ventas'); });
+  document.getElementById('cajaModoGastos').addEventListener('click', function(){ setCajaModo('gastos'); });
+
+  /* Gastos */
+  document.getElementById('gastoFecha').value = todayStr();
+  var activeGastoEditId = null;
+  var gastoMesSel = new Date();
+  gastoMesSel.setDate(1);
+
+  // Un gasto "Pagó Romi" mantiene un movimiento vinculado en Saldo (DARA le debe a Romi).
+  function syncGastoSaldo(g){
+    var mov = g.saldoMovId ? state.movimientos.find(function(m){ return m.id === g.saldoMovId; }) : null;
+    if (g.formaPago === 'romi') {
+      var desc = 'Gasto: ' + (g.desc || 'sin detalle');
+      if (mov) { mov.monto = g.monto; mov.desc = desc; mov.fecha = g.fecha; }
+      else {
+        mov = { id: uid(), fecha: g.fecha, desc: desc, monto: g.monto, liquidacion: false, tipo: '', creadoPor: g.creadoPor || who() };
+        state.movimientos.push(mov);
+        g.saldoMovId = mov.id;
+      }
+    } else {
+      if (mov) state.movimientos = state.movimientos.filter(function(m){ return m.id !== mov.id; });
+      g.saldoMovId = '';
+    }
+  }
+
+  function resetGastoForm(){
+    activeGastoEditId = null;
+    document.getElementById('gastoFormTitle').textContent = 'Nuevo gasto';
+    document.getElementById('saveGasto').textContent = 'Guardar gasto';
+    document.getElementById('cancelEditGasto').style.display = 'none';
+    document.getElementById('gastoDesc').value = '';
+    document.getElementById('gastoMonto').value = '';
+    document.getElementById('gastoFecha').value = todayStr();
+    gastoFormaSeg.set('efectivo');
+  }
+  document.getElementById('cancelEditGasto').addEventListener('click', resetGastoForm);
+
+  document.getElementById('saveGasto').addEventListener('click', function(){
+    var montoEl = document.getElementById('gastoMonto');
+    var monto = parseNum(montoEl.value);
+    if (!(monto > 0)) { montoEl.focus(); return; }
+    var desc = document.getElementById('gastoDesc').value.trim();
+    var fecha = document.getElementById('gastoFecha').value || todayStr();
+    var g;
+    if (activeGastoEditId) {
+      g = state.gastos.find(function(x){ return x.id === activeGastoEditId; });
+      if (!g) return;
+      g.desc = desc; g.monto = monto; g.fecha = fecha; g.formaPago = gastoFormaSeg.get();
+    } else {
+      g = { id: uid(), fecha: fecha, desc: desc, monto: monto, formaPago: gastoFormaSeg.get(), saldoMovId: '', creadoPor: who() };
+      state.gastos.push(g);
+    }
+    syncGastoSaldo(g);
+    save();
+    renderGastosList(); renderCaja(); renderSaldo();
+    resetGastoForm();
+  });
+
+  function editGasto(id){
+    var g = state.gastos.find(function(x){ return x.id === id; });
+    if (!g) return;
+    activeGastoEditId = id;
+    document.getElementById('gastoFormTitle').textContent = 'Editar gasto';
+    document.getElementById('saveGasto').textContent = 'Guardar cambios';
+    document.getElementById('cancelEditGasto').style.display = 'block';
+    document.getElementById('gastoDesc').value = g.desc || '';
+    document.getElementById('gastoMonto').value = Math.round(g.monto);
+    document.getElementById('gastoFecha').value = g.fecha || todayStr();
+    gastoFormaSeg.set(g.formaPago || 'efectivo');
+    document.getElementById('gastoFormCard').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function deleteGasto(id){
+    var g = state.gastos.find(function(x){ return x.id === id; });
+    if (!g) return;
+    var msg = g.saldoMovId
+      ? '¿Eliminar este gasto? También se quita de Saldo el movimiento que generó.'
+      : '¿Eliminar este gasto? No se puede deshacer.';
+    askConfirm(msg, function(){
+      if (g.saldoMovId) state.movimientos = state.movimientos.filter(function(m){ return m.id !== g.saldoMovId; });
+      state.gastos = state.gastos.filter(function(x){ return x.id !== id; });
+      if (activeGastoEditId === id) resetGastoForm();
+      save();
+      renderGastosList(); renderCaja(); renderSaldo();
+    }, 'Eliminar gasto');
+  }
+
+  document.getElementById('gastoMesPrev').addEventListener('click', function(){
+    gastoMesSel.setMonth(gastoMesSel.getMonth() - 1); renderGastosList();
+  });
+  document.getElementById('gastoMesNext').addEventListener('click', function(){
+    gastoMesSel.setMonth(gastoMesSel.getMonth() + 1); renderGastosList();
+  });
+
+  function renderGastosList(){
+    var wrap = document.getElementById('gastosList');
+    var empty = document.getElementById('gastosEmpty');
+    wrap.innerHTML = '';
+    var label = ventaMesLabel(gastoMesSel);
+    document.getElementById('gastoMesNavLabel').textContent = label;
+    document.getElementById('gastoMesLabel').textContent = label;
+
+    var filtrados = state.gastos.filter(function(g){
+      var d = new Date((g.fecha || '') + 'T00:00:00');
+      return d.getFullYear() === gastoMesSel.getFullYear() && d.getMonth() === gastoMesSel.getMonth();
+    });
+    var total = filtrados.reduce(function(s, g){ return s + (g.monto || 0); }, 0);
+    document.getElementById('gastoTotalMes').textContent = fmt(total);
+
+    if (filtrados.length === 0) { empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    filtrados.sort(function(a, b){ return (a.fecha || '') < (b.fecha || '') ? 1 : ((a.fecha || '') > (b.fecha || '') ? -1 : 0); });
+
+    filtrados.forEach(function(g){
+      var row = document.createElement('div'); row.className = 'client-row'; row.style.cursor = 'default';
+      var left = document.createElement('div');
+      var name = document.createElement('div'); name.className = 'client-name'; name.textContent = g.desc || '(sin detalle)';
+      var sub = document.createElement('div'); sub.className = 'client-since';
+      sub.textContent = fmtDate(g.fecha) + ' · ' + (FP_LABEL[g.formaPago] || '') + (g.formaPago === 'romi' ? ' (en Saldo)' : '') + byTag(g);
+      left.appendChild(name); left.appendChild(sub);
+      var right = document.createElement('div');
+      right.style.display = 'flex'; right.style.alignItems = 'center'; right.style.gap = '8px';
+      var amt = document.createElement('div'); amt.className = 'entry-amount plus'; amt.textContent = fmt(g.monto);
+      var editBtn = document.createElement('button'); editBtn.className = 'del-btn'; editBtn.innerHTML = '&#9998;'; editBtn.title = 'Editar';
+      editBtn.style.fontSize = '15px';
+      editBtn.addEventListener('click', function(){ editGasto(g.id); });
+      var delBtn = document.createElement('button'); delBtn.className = 'del-btn'; delBtn.innerHTML = '&times;'; delBtn.title = 'Eliminar';
+      delBtn.addEventListener('click', function(){ deleteGasto(g.id); });
+      right.appendChild(amt); right.appendChild(editBtn); right.appendChild(delBtn);
+      row.appendChild(left); row.appendChild(right);
+      wrap.appendChild(row);
+    });
+  }
 
   /* ---------- Backup / Configuración ---------- */
   var dialog = document.getElementById('backupDialog');
@@ -2733,9 +3270,11 @@
       state.clientas = parsed.clientas || [];
       state.pedidos = parsed.pedidos || parsed.precios || [];
       state.ventas = parsed.ventas || [];
+      state.gastos = parsed.gastos || [];
+      state.cajaMovs = parsed.cajaMovs || [];
       save();
       renderSaldo(); renderPedidosList(); renderClientList();
-      renderVentasList(); renderVentaTotalMes();
+      renderVentasList(); renderVentaTotalMes(); renderGastosList();
       refreshPedNumeroSuggestion();
       dialog.close();
     } catch(e){
@@ -2743,10 +3282,20 @@
     }
   });
 
-  /* ---------- PIN ---------- */
-  var PIN_HASH_KEY = 'dara_pin_hash';
-  var SESSION_KEY = 'dara_session_ok';
-  var lockMode = 'login'; // 'login' | 'setup'
+  /* ---------- Usuarios y PIN ---------- */
+  var PIN_HASH_KEY_PREFIX = 'dara_pin_hash_';
+  var SESSION_KEY = 'dara_session_role';
+  var DEFAULT_PINS = { admin: '2020', aux: '2021' };
+  var USER_LABEL = { admin: 'Administrador', aux: 'Auxiliar' };
+  var CURRENT_ROLE = '';
+  try {
+    var savedRole = localStorage.getItem(SESSION_KEY);
+    if (savedRole === 'admin' || savedRole === 'aux') CURRENT_ROLE = savedRole;
+  } catch(e){}
+
+  // Nombre de quien está usando la app: se anota en todo lo que se carga.
+  function who(){ return USER_LABEL[CURRENT_ROLE] || ''; }
+  function byTag(x){ return x && x.creadoPor ? ' · ' + x.creadoPor : ''; }
 
   async function sha256Hex(str){
     var enc = new TextEncoder().encode(str);
@@ -2754,66 +3303,72 @@
     return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
   }
 
-  function getStoredPinHash(){
-    try { return localStorage.getItem(PIN_HASH_KEY) || ''; } catch(e){ return ''; }
+  // Hasta que alguien cambie un PIN, valen los de fábrica (2020 y 2021): no se guarda nada en la planilla.
+  function getStoredPinHash(role){
+    try { return localStorage.getItem(PIN_HASH_KEY_PREFIX + role) || ''; } catch(e){ return ''; }
   }
-  function setStoredPinHash(hash){
-    try { localStorage.setItem(PIN_HASH_KEY, hash); } catch(e){}
+  function setStoredPinHash(role, hash){
+    try { localStorage.setItem(PIN_HASH_KEY_PREFIX + role, hash); } catch(e){}
     save();
+  }
+  async function effectivePinHash(role){
+    return getStoredPinHash(role) || await sha256Hex(DEFAULT_PINS[role]);
+  }
+
+  var pinTargetSeg = makeSeg('pinTargetSeg', 'admin');
+
+  function applyRoleUI(){
+    document.getElementById('userChip').textContent = who();
+    document.getElementById('sessionNote').textContent = CURRENT_ROLE ? ('Entraste como ' + who() + '.') : '';
+    document.querySelectorAll('[data-admin-only]').forEach(function(el){
+      el.style.display = CURRENT_ROLE === 'admin' ? '' : 'none';
+    });
   }
 
   function showApp(){
     document.getElementById('lockScreen').style.display = 'none';
     document.getElementById('appRoot').style.display = 'block';
+    applyRoleUI();
+    refreshAllViews();
   }
 
   function refreshPinSectionUI(){
-    var hasPin = !!getStoredPinHash();
-    document.getElementById('pinCurrentLabel').style.display = hasPin ? 'block' : 'none';
-    document.getElementById('pinCurrentInput').style.display = hasPin ? 'block' : 'none';
     document.getElementById('pinCurrentInput').value = '';
     document.getElementById('pinNewInput').value = '';
-    document.getElementById('pinNote').textContent = hasPin
-      ? 'Ya tenés un PIN configurado (vale para todos los dispositivos conectados a la misma planilla). Para cambiarlo, ingresá el actual y el nuevo.'
-      : 'Todavía no configuraste un PIN.';
     document.getElementById('pinStatus').textContent = '';
-    document.getElementById('btnCerrarSesion').style.display = hasPin ? 'block' : 'none';
+    applyRoleUI();
   }
 
   document.getElementById('btnGuardarPin').addEventListener('click', async function(){
     var statusEl = document.getElementById('pinStatus');
-    var storedHash = getStoredPinHash();
-    var hasPin = !!storedHash;
+    if (CURRENT_ROLE !== 'admin') { statusEl.textContent = 'solo el Administrador puede cambiar los PIN'; return; }
+    var target = pinTargetSeg.get();
+    var other = target === 'admin' ? 'aux' : 'admin';
     var newPin = document.getElementById('pinNewInput').value.trim();
     if (!/^[0-9]{4,6}$/.test(newPin)) { statusEl.textContent = 'el PIN debe tener de 4 a 6 números'; return; }
-    if (hasPin) {
-      var currentPin = document.getElementById('pinCurrentInput').value.trim();
-      var currentHash = await sha256Hex(currentPin);
-      if (currentHash !== storedHash) { statusEl.textContent = 'el PIN actual no coincide'; return; }
-    }
+    var currentPin = document.getElementById('pinCurrentInput').value.trim();
+    if ((await sha256Hex(currentPin)) !== (await effectivePinHash('admin'))) { statusEl.textContent = 'el PIN actual del Administrador no coincide'; return; }
     var newHash = await sha256Hex(newPin);
-    setStoredPinHash(newHash);
-    statusEl.textContent = 'PIN guardado ✓ (se está subiendo a tu planilla)';
+    if (newHash === (await effectivePinHash(other))) { statusEl.textContent = 'ese PIN ya lo usa el otro usuario'; return; }
+    setStoredPinHash(target, newHash);
     refreshPinSectionUI();
+    document.getElementById('pinStatus').textContent = 'PIN de ' + USER_LABEL[target] + ' guardado ✓ (se está subiendo a tu planilla)';
   });
 
   document.getElementById('btnCerrarSesion').addEventListener('click', function(){
     try { localStorage.removeItem(SESSION_KEY); } catch(e){}
+    CURRENT_ROLE = '';
     dialog.close();
-    presentLock('login');
+    presentLock();
   });
 
-  function presentLock(mode){
-    lockMode = mode;
-    var lockMsg = document.getElementById('lockMsg');
-    var lockConfirm = document.getElementById('lockPinConfirm');
+  function presentLock(){
     var lockError = document.getElementById('lockError');
     var lockInput = document.getElementById('lockPinInput');
     lockError.textContent = '';
     lockInput.value = '';
-    lockConfirm.value = '';
-    lockMsg.textContent = mode === 'setup' ? 'Creá un PIN para proteger la app.' : 'Ingresá tu PIN para entrar.';
-    lockConfirm.style.display = mode === 'setup' ? 'block' : 'none';
+    document.getElementById('lockMsg').textContent = 'Ingresá tu PIN para entrar.';
+    document.getElementById('lockPinConfirm').style.display = 'none';
     document.getElementById('appRoot').style.display = 'none';
     document.getElementById('lockScreen').style.display = 'flex';
   }
@@ -2821,39 +3376,27 @@
   document.getElementById('lockSubmit').addEventListener('click', async function(){
     var lockError = document.getElementById('lockError');
     var lockInput = document.getElementById('lockPinInput');
-    var lockConfirm = document.getElementById('lockPinConfirm');
     lockError.textContent = '';
-    var pin = lockInput.value.trim();
-    if (lockMode === 'setup') {
-      var confirmPin = lockConfirm.value.trim();
-      if (!/^[0-9]{4,6}$/.test(pin)) { lockError.textContent = 'el PIN debe tener de 4 a 6 números'; return; }
-      if (pin !== confirmPin) { lockError.textContent = 'los dos PIN no coinciden'; return; }
-      var newHash = await sha256Hex(pin);
-      setStoredPinHash(newHash);
-      try { localStorage.setItem(SESSION_KEY, '1'); } catch(e){}
-      showApp();
-    } else {
-      var storedHash = getStoredPinHash();
-      var tryHash = await sha256Hex(pin);
-      if (tryHash === storedHash) {
-        try { localStorage.setItem(SESSION_KEY, '1'); } catch(e){}
-        showApp();
-      } else {
-        lockError.textContent = 'PIN incorrecto';
-        lockInput.value = '';
-      }
+    var tryHash = await sha256Hex(lockInput.value.trim());
+    var role = '';
+    if (tryHash === (await effectivePinHash('admin'))) role = 'admin';
+    else if (tryHash === (await effectivePinHash('aux'))) role = 'aux';
+    if (!role) {
+      lockError.textContent = 'PIN incorrecto';
+      lockInput.value = '';
+      return;
     }
+    CURRENT_ROLE = role;
+    try { localStorage.setItem(SESSION_KEY, role); } catch(e){}
+    showApp();
   });
   document.getElementById('lockPinInput').addEventListener('keydown', function(e){
-    if (e.key === 'Enter' && lockMode === 'login') document.getElementById('lockSubmit').click();
+    if (e.key === 'Enter') document.getElementById('lockSubmit').click();
   });
 
-  async function initLock(){
-    var storedHash = getStoredPinHash();
-    var sessionOk = false;
-    try { sessionOk = localStorage.getItem(SESSION_KEY) === '1'; } catch(e){}
-    if (storedHash && sessionOk) { showApp(); return; }
-    presentLock(storedHash ? 'login' : 'setup');
+  function initLock(){
+    if (CURRENT_ROLE) { showApp(); return; }
+    presentLock();
   }
 
   /* ---------- Init ---------- */
@@ -2864,6 +3407,7 @@
     renderClientList();
     renderVentasList();
     renderVentaTotalMes();
+    renderGastosList();
     refreshPedNumeroSuggestion();
     initLock();
   })();
@@ -2879,13 +3423,22 @@
   /* Si la app se va a segundo plano con un guardado en curso, lo reforzamos
      con sendBeacon, que sigue funcionando aunque se cierre la pestaña. */
   document.addEventListener('visibilitychange', function(){
-    if (document.hidden && pendingSave && SCRIPT_URL) {
-      try {
-        var blob = new Blob([JSON.stringify({ action: 'save', data: flattenForSync() })], { type: 'text/plain;charset=utf-8' });
-        navigator.sendBeacon(SCRIPT_URL, blob);
-      } catch(e){}
+    if (document.hidden) {
+      if (SCRIPT_URL && baseSnap) {
+        try {
+          var changes = computePatch(flattenForSync(), baseSnap);
+          if (Object.keys(changes).length) {
+            var blob = new Blob([JSON.stringify({ action: 'patch', changes: changes })], { type: 'text/plain;charset=utf-8' });
+            navigator.sendBeacon(SCRIPT_URL, blob);
+          }
+        } catch(e){}
+      }
+    } else {
+      refreshFromRemote();
     }
   });
+  // Cada minuto (y al volver a la app) se trae lo que haya cargado la otra persona.
+  setInterval(refreshFromRemote, 60000);
 })();
 </script>
 </body>
